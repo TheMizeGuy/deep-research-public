@@ -55,49 +55,72 @@ Break your SCOPE into exactly COLLECTOR BUDGET non-overlapping collection tasks.
 | GitHub/community | gh CLI searches, issue scans, discussion threads | Open issues, release notes, community patterns |
 | Academic/specs | WebSearch for arxiv, RFCs, official specs | Foundational concepts, formal definitions |
 
-### Step 2: Dispatch collectors SEQUENTIALLY
+### Step 2: Scaffold the output file
 
-This is your primary job. Do it NOW, before anything else:
+Before dispatching any collectors, write the skeleton of your output file to OUTPUT PATH:
 
+```markdown
+{FRONTMATTER TEMPLATE from briefing}
+
+# {DOMAIN title}
+
+{1-2 sentence overview -- write this now from what you understand of the SCOPE}
+
+[Leave the rest empty -- you'll fill sections as collectors return]
 ```
-Agent({
-  description: "Collect <task type> for <domain>",
-  subagent_type: "deep-research:data-collector",
-  model: "sonnet",
-  prompt: "<briefing with TASK, SOURCES TO CHECK, MAX OUTPUT: 2000 words>"
-})
-```
 
-Each collector briefing must include:
-- TASK: One specific collection job
-- SOURCES TO CHECK: Explicit queries, URLs, library IDs, or paths
-- MAX OUTPUT: 2000 words
+### Step 3: Dispatch collectors and synthesize INCREMENTALLY
 
-Wait for each collector to return before dispatching the next. You MUST dispatch exactly COLLECTOR BUDGET collectors (minimum 2). Dispatching fewer is a failure.
+This is the core loop. Dispatch one collector, wait for it to return, immediately integrate its findings into the output file, then dispatch the next. Do NOT batch all collectors first and synthesize later.
 
-### Step 3: Synthesize
+**For each collector (repeat COLLECTOR BUDGET times):**
 
-After ALL collectors have returned:
+1. **Dispatch** the next collector:
+   ```
+   Agent({
+     description: "Collect <task type> for <domain>",
+     subagent_type: "deep-research:data-collector",
+     model: "sonnet",
+     prompt: "<briefing with TASK, SOURCES TO CHECK, MAX OUTPUT: 2000 words>"
+   })
+   ```
+   Each collector briefing must include:
+   - TASK: One specific collection job
+   - SOURCES TO CHECK: Explicit queries, URLs, library IDs, or paths
+   - MAX OUTPUT: 2000 words
 
-1. Read all collector outputs (they're in your context from the Agent returns)
-2. Deduplicate claims that appear in multiple collector outputs
-3. Apply confidence grading:
-   - **[P]** = primary source (official docs, engineering posts, arxiv papers)
-   - **[S]** = secondary source (blog posts, articles, tutorials)
-   - **[P x N]** = N primary sources independently confirm the claim
-   - **[V]** = verified by you via tool call (not just reported by collector)
-   - **[recall]** = from model training data, not verified via tool
-4. Organize by topic (following your SCOPE bullet list)
-5. Flag gaps — sub-questions from SCOPE that no collector found answers to
-6. Write the synthesis file to OUTPUT PATH
+2. **When the collector returns**, immediately:
+   - Read the collector's findings
+   - Apply confidence grading to each claim:
+     - **[P]** = primary source (official docs, engineering posts, arxiv papers)
+     - **[S]** = secondary source (blog posts, articles, tutorials)
+     - **[P x N]** = N primary sources independently confirm the claim
+     - **[V]** = verified by you via tool call (not just reported by collector)
+     - **[recall]** = from model training data, not verified via tool
+   - Deduplicate against what's already in the output file
+   - Write the new findings into the appropriate sections of the output file
+   - Note any gaps or questions the next collector could address
 
-### Step 4 (optional): Fill critical gaps
+3. **Dispatch the next collector.** If earlier collectors revealed gaps relevant to upcoming tasks, adjust the next collector's briefing to target those gaps.
 
-After writing the synthesis, if there are 1-2 critical gaps, you may query goodmem or read vault files to fill them. You still cannot do web searches — dispatch another collector if web research is needed.
+You MUST dispatch exactly COLLECTOR BUDGET collectors (minimum 2). Dispatching fewer is a failure.
+
+**Why incremental**: with 6-10 collectors returning ~2000 words each, batching all findings into one synthesis pass creates a 12-20K word context bomb. Incremental synthesis processes ~2000 words at a time, builds the file progressively, and lets later collector briefings adapt to gaps found earlier.
+
+### Step 4: Final pass
+
+After the last collector returns and its findings are integrated:
+
+1. Read the full output file
+2. Check for: missing sections, inconsistent confidence grades, cross-reference opportunities between sections, remaining gaps
+3. Add the `## Gaps and Open Questions` section
+4. Add the `## References` section (consolidate all sources cited throughout)
+5. Write the final version to OUTPUT PATH
+6. If critical gaps remain, you may query goodmem or read vault files to fill them. You still cannot do web searches -- dispatch another collector if web research is needed.
 
 ### Step 5: Write domain findings to goodmem
 
-After writing the synthesis file, write your key findings directly to goodmem (if configured — the orchestrator will pass the space ID in the briefing). You own this domain — you know what's worth remembering better than the orchestrator will after parsing your output.
+After the output file is finalized, write your key findings directly to goodmem (if configured -- the orchestrator will pass the space ID in the briefing). You own this domain -- you know what's worth remembering better than the orchestrator will after parsing your output.
 
 Write ONE goodmem memory per domain covering the most important findings:
 
@@ -110,7 +133,7 @@ goodmem_memories_create({
 })
 ```
 
-This runs BEFORE you return to the skill — don't skip it.
+This runs BEFORE you return to the skill.
 
 ## Output file format
 
