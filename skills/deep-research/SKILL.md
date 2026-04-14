@@ -129,9 +129,9 @@ TaskCreate: "Memory integration + cleanup" for the last phase
 
 For each domain, dispatch a manager agent. Dispatch them ONE AT A TIME (sequential).
 
-**All tiers** use `agents/research-manager.md` -- the collector-dispatching variant. There is no solo/direct-research path. The manager does not have WebSearch/WebFetch/context7, making it structurally impossible to bypass collectors.
+**All tiers** use `agents/research-manager.md` -- the collector-dispatching variant. There is no solo/direct-research path. The manager's system prompt explicitly prohibits direct use of WebSearch/WebFetch/context7 -- all research must go through dispatched collectors.
 
-**CRITICAL: Dispatch as general-purpose, NOT via subagent_type.** The Agent tool is NOT available to plugin-defined agents at runtime (confirmed platform limitation). General-purpose agents reliably receive the Agent tool.
+**CRITICAL: Dispatch as general-purpose, NOT via subagent_type.** The Agent tool is NOT available to plugin-defined agents at runtime (confirmed platform limitation). General-purpose agents reliably receive the Agent tool. The manager's system prompt enforces the research-tool prohibition even though general-purpose technically provides those tools.
 
 ### How to dispatch
 
