@@ -105,24 +105,38 @@ For each domain, dispatch a manager agent. Dispatch them ONE AT A TIME (sequenti
 
 Two agent types exist — pick based on tier:
 
-| Tier | Agent definition | Has Agent tool? | Has WebSearch/context7? |
-|---|---|---|---|
-| 1 | `agents/research-manager-solo.md` | No | Yes — researches directly |
-| 2 or 3 | `agents/research-manager.md` | Yes — dispatches collectors | No — structurally cannot bypass collectors |
+| Tier | Agent definition | Has Agent tool? | Has WebSearch/context7? | Dispatch method |
+|---|---|---|---|---|
+| 1 | `agents/research-manager-solo.md` | No | Yes — researches directly | General-purpose (needs WebSearch) |
+| 2 or 3 | `agents/research-manager.md` | Yes — dispatches collectors | **No** — structurally cannot bypass | `subagent_type: "deep-research:research-manager"` (enforces tool restriction) |
 
-**Dispatch as general-purpose in both cases.** Plugin-defined agent types do not reliably receive all tools at runtime.
+**Tier 1**: dispatch as general-purpose (read agent file, inline in prompt). The solo manager needs WebSearch/context7 which general-purpose provides.
+
+**Tier 2/3**: dispatch via `subagent_type: "deep-research:research-manager"`. This enforces the structural tool restriction — the manager has Agent tool for dispatching collectors but NOT WebSearch/WebFetch/context7, making it impossible to bypass collector dispatch.
 
 ### How to dispatch
 
-1. Read the appropriate agent definition file (everything after the second `---` frontmatter delimiter).
-2. Build a briefing with the domain-specific fields (see template below).
-3. Dispatch:
+**Tier 1:**
+1. Read `agents/research-manager-solo.md` (everything after the second `---` frontmatter delimiter).
+2. Dispatch as general-purpose with the system prompt + briefing:
 
 ```
 Agent({
   description: "Research: <domain name>",
   model: "opus",
-  prompt: "<agent system prompt>\n\n---\n\nBRIEFING:\n<briefing fields>"
+  prompt: "<solo agent system prompt>\n\n---\n\nBRIEFING:\n<briefing fields>"
+})
+```
+
+**Tier 2/3:**
+1. Dispatch via plugin agent type with briefing only (the agent gets its system prompt from the definition file):
+
+```
+Agent({
+  description: "Research: <domain name>",
+  subagent_type: "deep-research:research-manager",
+  model: "opus",
+  prompt: "<briefing fields only — no need to inline system prompt>"
 })
 ```
 
