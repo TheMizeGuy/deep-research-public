@@ -2,7 +2,7 @@
 name: deep-research
 description: |-
   Conduct deep, multi-agent research on a topic and document findings in an Obsidian vault with optional goodmem ingestion. Auto-scales from single-agent (narrow topics) to full 3-tier hierarchy with Opus managers and Sonnet data collectors (broad topics). Use when the user asks to "deep research", "do comprehensive research on", "research everything about", "build a knowledge base on", or "create a reference on" a topic. Do NOT use for quick factual questions, single lookups, or casual "what is X" queries.
-argument-hint: '<topic> [--path <vault-path>] [--tier <1|2|3>]'
+argument-hint: '<topic> [--path <vault-path>] [--tier <1-5>]'
 allowed-tools: Bash, Read, Write, Grep, Glob, Agent, TodoWrite, TaskCreate, TaskUpdate, WebSearch, WebFetch, mcp__plugin_goodmem_goodmem__goodmem_memories_retrieve, mcp__plugin_goodmem_goodmem__goodmem_memories_get, mcp__plugin_goodmem_goodmem__goodmem_memories_create
 ---
 
@@ -16,7 +16,7 @@ The user passed an argument string. Parse it into:
 
 1. **Topic** — everything before the first `--` flag. Required. If empty, ask the user what to research and stop.
 2. **--path** — optional vault path override (absolute). If omitted, auto-detect in Step 3.
-3. **--tier** — optional forced tier (1, 2, or 3). If omitted, auto-detect in Step 3.
+3. **--tier** — optional forced tier (1-5). If omitted, auto-detect in Step 3.
 
 ## Step 2: Reconnaissance
 
@@ -64,9 +64,11 @@ Every tier dispatches an Opus manager with mandatory Sonnet collectors. No tier 
 
 | Domains | Tier | Collector floor | Behavior |
 |---|---|---|---|
-| 1-2 | 1 | 2 | Single manager per domain |
-| 3-5 | 2 | 4 | Single manager per domain |
-| 6+ | 3 | 6 | Multiple managers, intermediate synthesis files |
+| 1 | 1 | 2 | Single manager |
+| 2 | 2 | 3 | Single manager per domain |
+| 3-4 | 3 | 4 | Single manager per domain |
+| 5-7 | 4 | 6 | Multiple managers, intermediate synthesis files |
+| 8+ | 5 | 8 | Large-scale multi-manager, intermediate synthesis, extensive cross-referencing |
 
 ### 3b.1: Compute COLLECTOR BUDGET per domain
 
@@ -74,18 +76,19 @@ The tier floor is a MINIMUM, not the actual budget. Compute per domain:
 
 ```
 questions = number of sub-questions in this domain's SCOPE
-floor = tier floor from table above (2, 4, or 6)
-computed = ceil(questions / 5)     # ~5 questions per collector
+floor = tier floor from table above (2, 3, 4, 6, or 8)
+computed = ceil(questions / 4)     # ~4 questions per collector
 budget = max(floor, computed)
 budget = min(budget, 10)           # hard cap at 10 per manager
 ```
 
 Examples:
-- Tier 1 domain with 8 questions: max(2, ceil(8/5)) = max(2, 2) = 2
-- Tier 1 domain with 15 questions: max(2, ceil(15/5)) = max(2, 3) = 3
-- Tier 2 domain with 25 questions: max(4, ceil(25/5)) = max(4, 5) = 5
-- Tier 3 domain with 30 questions: max(6, ceil(30/5)) = max(6, 6) = 6
-- Tier 3 domain with 50 questions: min(max(6, ceil(50/5)), 10) = min(10, 10) = 10
+- Tier 1, 6 questions: max(2, ceil(6/4)) = max(2, 2) = 2
+- Tier 2, 10 questions: max(3, ceil(10/4)) = max(3, 3) = 3
+- Tier 3, 16 questions: max(4, ceil(16/4)) = max(4, 4) = 4
+- Tier 4, 20 questions: max(6, ceil(20/4)) = max(6, 5) = 6
+- Tier 4, 30 questions: max(6, ceil(30/4)) = max(6, 8) = 8
+- Tier 5, 40 questions: min(max(8, ceil(40/4)), 10) = min(10, 10) = 10
 
 This ensures narrow domains don't waste collectors while broad domains get proportional coverage. The budget is computed per domain, not globally — different domains may get different budgets.
 
@@ -104,7 +107,7 @@ This ensures narrow domains don't waste collectors while broad domains get propo
 
 Sanitize the topic for use as a folder name: preserve spaces (Obsidian handles them fine), remove special characters except hyphens.
 
-### 3d: Create scratch directory (Tier 3 only)
+### 3d: Create scratch directory (Tier 4+ only)
 
 ```bash
 mkdir -p /tmp/deep-research-$(date +%s)
@@ -148,9 +151,9 @@ SCOPE:
 - <sub-question 2>
 - ... (10-30 sub-questions)
 
-TIER: <1|2|3>
+TIER: <1-5>
 COLLECTOR BUDGET: <computed per 3b.1: max(tier_floor, ceil(questions/5)), capped at 10>
-OUTPUT PATH: <absolute path — vault path for Tier 1/2, scratch dir for Tier 3>
+OUTPUT PATH: <absolute path — vault path for Tier 1-3, scratch dir for Tier 4-5>
 LINE COUNT TARGET: <800-1500 depending on domain breadth>
 WIKILINK SUGGESTIONS: <list of existing vault files to cross-link to>
 
@@ -183,9 +186,9 @@ QUALITY BAR:
 
 ## Step 5: Write vault docs (Tier 3) or MOC (all tiers)
 
-### Tier 3: Rewrite from scratch dir to vault
+### Tier 4-5: Rewrite from scratch dir to vault
 
-For Tier 3, managers wrote to the scratch dir. Now move/rewrite to the vault:
+For Tier 4-5, managers wrote to the scratch dir. Now move/rewrite to the vault:
 
 1. Read each manager's synthesis file from the scratch dir
 2. Write final vault files to the vault path with the same content (the manager already applied the frontmatter and quality bar)
@@ -241,7 +244,7 @@ status: published
 ## Session provenance
 
 - Date: <today>
-- Tier: <1|2|3>
+- Tier: <1-5>
 - Managers dispatched: <N>
 - Total agents (managers + collectors): <N>
 - Total output lines: <N>
@@ -251,7 +254,7 @@ status: published
 
 Each manager already wrote its domain findings to goodmem directly (one memory per domain with key findings, gaps, and vault file path). You do NOT need to parse their output or write a distilled learning — they handled it.
 
-### Clean up scratch dir (Tier 3 only)
+### Clean up scratch dir (Tier 4+ only)
 
 ```bash
 rm -rf /tmp/deep-research-<timestamp>
@@ -268,7 +271,7 @@ Topic: <topic>
 Vault path: <path>
 Files: <N> + MOC index
 Total lines: <N>
-Tier: <1|2|3> (<N> managers, <N> collectors)
+Tier: <1-5> (<N> managers, <N> collectors)
 
 Key findings:
 - <finding 1>

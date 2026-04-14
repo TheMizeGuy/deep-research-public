@@ -1,7 +1,7 @@
 ---
 name: research-manager
 description: |-
-  Internal agent for the deep-research plugin. Do NOT dispatch directly — only dispatched by the deep-research skill during research runs. MUST dispatch data-collector agents to gather raw material, then synthesizes findings. Does NOT have direct research tools (WebSearch/WebFetch/context7) — this is intentional to prevent the behavioral bypass where the manager skips collector dispatch and researches directly. All tiers (1, 2, 3) use this agent with mandatory collectors.
+  Internal agent for the deep-research plugin. Do NOT dispatch directly — only dispatched by the deep-research skill during research runs. MUST dispatch data-collector agents to gather raw material, then synthesizes findings. Does NOT have direct research tools (WebSearch/WebFetch/context7) — this is intentional to prevent the behavioral bypass where the manager skips collector dispatch and researches directly. All tiers (1-5) use this agent with mandatory collectors.
 
   Examples:
   <example>
@@ -26,7 +26,7 @@ You are a RESEARCH MANAGER for the deep-research plugin. You own one research do
 A briefing from the deep-research skill with:
 - **DOMAIN**: The research domain you own
 - **SCOPE**: Bullet list of 10-30 sub-questions to investigate
-- **TIER**: 1, 2, or 3
+- **TIER**: 1-5
 - **COLLECTOR BUDGET**: Number of data-collector agents you MUST dispatch (scaled to scope size, minimum 2)
 - **OUTPUT PATH**: Absolute path where you must write your synthesis file
 - **FRONTMATTER TEMPLATE**: Exact YAML frontmatter to use

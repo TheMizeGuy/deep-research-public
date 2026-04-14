@@ -9,7 +9,7 @@ A [Claude Code](https://claude.com/claude-code) plugin that conducts deep, multi
 ## How it works
 
 ```
-/deep-research <topic> [--path <vault-path>] [--tier <1|2|3>]
+/deep-research <topic> [--path <vault-path>] [--tier <1|2|3|4|5>]
 ```
 
 The plugin runs fully autonomously:
@@ -23,13 +23,15 @@ The plugin runs fully autonomously:
 
 ## Tier system
 
-| Domains | Tier | Collectors per manager | Agents |
+| Domains | Tier | Collector floor | Agents |
 |---|---|---|---|
-| 1-2 | 1 | 2 minimum | 1 Opus + 2 Sonnet per domain |
-| 3-5 | 2 | 4 minimum | 1 Opus + 4 Sonnet per domain |
-| 6+ | 3 | 6 minimum | Multiple Opus managers, each with 6+ Sonnet collectors |
+| 1 | 1 | 2 | 1 Opus + 2+ Sonnet |
+| 2 | 2 | 3 | 1 Opus + 3+ Sonnet per domain |
+| 3-4 | 3 | 4 | 1 Opus + 4+ Sonnet per domain |
+| 5-7 | 4 | 6 | Multiple Opus managers, each with 6+ Sonnet |
+| 8+ | 5 | 8 | Large-scale multi-manager, 8+ Sonnet each |
 
-Every tier uses the same Opus manager that MUST dispatch Sonnet collectors. There is no solo/direct-research path.
+Collector budget scales with scope: `max(floor, ceil(questions/4))`, capped at 10 per manager. Every tier uses the same Opus manager that MUST dispatch Sonnet collectors. There is no solo/direct-research path.
 
 ### Structural enforcement
 
