@@ -129,18 +129,24 @@ TaskCreate: "Memory integration + cleanup" for the last phase
 
 For each domain, dispatch a manager agent. Dispatch them ONE AT A TIME (sequential).
 
-**All tiers** use `agents/research-manager.md` — the collector-dispatching variant. There is no solo/direct-research path. The manager has Agent tool for dispatching but NOT WebSearch/WebFetch/context7, making it structurally impossible to bypass collectors.
+**All tiers** use `agents/research-manager.md` -- the collector-dispatching variant. There is no solo/direct-research path. The manager does not have WebSearch/WebFetch/context7, making it structurally impossible to bypass collectors.
 
-Dispatch via `subagent_type: "deep-research:research-manager"` to enforce the tool restriction:
+**CRITICAL: Dispatch as general-purpose, NOT via subagent_type.** The Agent tool is NOT available to plugin-defined agents at runtime (confirmed platform limitation). General-purpose agents reliably receive the Agent tool.
+
+### How to dispatch
+
+1. Read the agent system prompt from `agents/research-manager.md` (everything after the second `---` frontmatter delimiter).
+2. Dispatch as general-purpose with the system prompt + briefing:
 
 ```
 Agent({
   description: "Research: <domain name>",
-  subagent_type: "deep-research:research-manager",
   model: "opus",
-  prompt: "<briefing fields>"
+  prompt: "<agent system prompt from research-manager.md>\n\n---\n\nBRIEFING:\n<briefing fields below>"
 })
 ```
+
+Do NOT use `subagent_type: "deep-research:research-manager"` -- the Agent tool won't work.
 
 ### Briefing fields (appended after the agent system prompt)
 
