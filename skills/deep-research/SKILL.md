@@ -182,38 +182,71 @@ tags: [<topic>, <sub-topics>]
 <1-2 sentence overview of the domain>
 ```
 
-### 4c: Dispatch ALL collectors -- no early termination
+### 4c: Serial collector loop -- incremental synthesis (STRICTLY one dispatch per turn)
+
+**EXECUTION RULE -- overrides Claude Code's default parallel-tool-call bias for this step.**
+
+Your system prompt tells you "if you intend to call multiple tools and there are no dependencies between the calls, make all of the independent calls in the same function_calls block." **That rule does NOT apply here.** In this loop, each collector's briefing is DERIVED from the state of OUTPUT_PATH after the previous collector's synthesis -- so there IS a hard data dependency between dispatches, even though step 4a pre-committed the task list.
+
+Concrete consequences:
+- Emit **exactly ONE Agent tool call per assistant turn** during this loop. Never two.
+- Never put an Agent call in the same `function_calls` block as another Agent call.
+- Never dispatch collector `i+1` until collector `i`'s findings have been read, integrated into OUTPUT_PATH via Edit, and the integration verified by re-reading the file.
+- If you find yourself composing two Agent calls together, STOP. Delete one. Run them in separate turns.
+
+If you dispatch all N collectors without synthesis between them, you have violated this rule and the incremental-synthesis purpose of this skill is defeated: collector findings become a 12-20K-word context bomb at the end, later briefings cannot adapt to earlier gaps, and the output file is written in one rushed pass.
 
 You MUST dispatch every collector planned in Step 4a. Stopping early because findings seem "sufficient" is a failure. The whole point of N collectors is proportional coverage -- one collector cannot substitute for the full plan.
 
-**For each collector i in [1..N]:**
+**The loop -- N iterations, one collector per iteration:**
 
-1. **Announce the dispatch** in your output (so the user can see the count):
-   ```
-   Dispatching collector <i>/N for domain "<domain>": <task type> -- <task description>
-   ```
+FOR i = 1 to N:
 
-2. **Mark the TaskCreate entry in_progress** for this collector.
+(a) **Read OUTPUT_PATH first.** Use the Read tool on OUTPUT_PATH before doing anything else in this iteration. For i=1 the file is just the scaffold from 4b -- read it anyway so the pattern is identical across iterations. The current file state IS the input to step (b); without this Read, you cannot compute the next briefing correctly.
 
-3. **Dispatch** the collector:
+(b) **Compute collector i's briefing** from two inputs:
+  - The task you planned for position `i` in step 4a's table
+  - The current OUTPUT_PATH content you just read -- specifically: what sub-questions are already answered, what gaps remain, what sources are already cited
+  If earlier collectors already covered a sub-question that was on collector i's slate, pivot collector i to an adjacent gap in the same domain. The 4a plan is the minimum coverage commitment, not a verbatim script -- refinement based on accumulated file state is expected.
+
+(c) **Mark TaskCreate entry i as in_progress** via TaskUpdate. This and step (d) may be in the same turn.
+
+(d) **Dispatch collector i** -- this assistant turn must contain ONE Agent call and no other tool calls:
    ```
    Agent({
      description: "Collect <task type> for <domain name>",
      subagent_type: "deep-research:data-collector",
      model: "sonnet",
-     prompt: "You are a DATA COLLECTOR for the deep-research plugin. Execute ONE narrow data-collection task and return structured raw findings.\n\nTASK: <specific collection job>\nSOURCES TO CHECK: <explicit queries, URLs, library IDs, or paths>\nMAX OUTPUT: 2000 words\n\nReturn one H2 section per source with Date, Relevance, and Claims. End with a Collection Summary. Do NOT synthesize across sources. Do NOT write files. Flag any claim from model recall with [recall]."
+     prompt: "You are a DATA COLLECTOR for the deep-research plugin. Execute ONE narrow data-collection task and return structured raw findings.\n\nTASK: <specific collection job from step (b)>\nSOURCES TO CHECK: <explicit queries, URLs, library IDs, or paths>\nALREADY COVERED (do not re-fetch): <bullets from step (a), or 'nothing yet' if i=1>\nMAX OUTPUT: 2000 words\n\nReturn one H2 section per source with Date, Relevance, and Claims. End with a Collection Summary. Do NOT synthesize across sources. Do NOT write files. Flag any claim from model recall with [recall]."
    })
    ```
+   Also announce the dispatch in your assistant text so the user can see the count: `Dispatching collector <i>/N for domain "<domain>": <task type> -- <task description>`.
 
-4. **When the collector returns**, YOU immediately:
-   - Read its findings
-   - Apply confidence grading: [P] primary, [S] secondary, [P x N] cross-verified, [V] tool-verified, [recall] unverified
-   - Deduplicate against what's already in the output file
-   - Write the graded findings into the appropriate sections of the output file (use Edit to append, or Write to update)
-   - Note gaps the next collector should target
-   - Mark the TaskCreate entry completed for this collector
+(e) **When the collector returns**, in the NEXT turn, integrate its findings:
+   - Read the collector's findings from the tool return value
+   - Apply confidence grading to each claim: [P] primary, [S] secondary, [P x N] cross-verified, [V] tool-verified, [recall] unverified
+   - Deduplicate against the OUTPUT_PATH content you already hold from step (a)
+   - Edit OUTPUT_PATH to append the graded findings to the appropriate sections (use Edit for targeted inserts; Write only if the file needs a full rewrite)
+   - Do NOT dispatch another collector in this turn. Integration is the only tool work in this turn.
 
-5. **Dispatch the next collector.** Adjust its briefing to target gaps from earlier collectors if relevant -- but DO NOT skip it. Every collector in your Step 4a plan runs, period.
+(f) **Verify the write.** Read OUTPUT_PATH again and confirm the new section landed correctly. Note any fresh gaps this collector surfaced -- they feed step (b) of iteration i+1.
+
+(g) **Mark TaskCreate entry i as completed** via TaskUpdate. This and the verification Read in step (f) may be in the same turn.
+
+(h) Only NOW may you begin iteration i+1 at step (a). Do not skip ahead.
+
+END FOR
+
+**Anti-batching checklist -- if ANY of these is true, you violated the execution rule and must correct course:**
+
+| Symptom | Fix |
+|---|---|
+| Two or more Agent tool calls in one assistant turn | Split -- one per turn |
+| Dispatched collector i+1 without an Edit on OUTPUT_PATH since collector i returned | Stop. Integrate collector i first, then resume |
+| Skipped the Read at step (a) | Read OUTPUT_PATH now; without it, the next briefing is uninformed |
+| Reused step 4a's briefing verbatim without reflecting what's already in the file | Re-read the file, recompute gaps, adjust the briefing |
+| Marked multiple TaskCreate entries completed in one turn | Each completion must be tied to the just-finished collector, not batched |
+| OUTPUT_PATH was only written once (at the end) rather than N+1 times (scaffold + once per collector) | You batched. Restart the loop with integration between dispatches |
 
 **Absolute prohibitions**:
 - Do NOT stop after collector 1 because "the findings look sufficient" -- run all N
@@ -221,7 +254,7 @@ You MUST dispatch every collector planned in Step 4a. Stopping early because fin
 - Do NOT skip a collector because earlier ones covered "most" of its sub-questions -- gaps from your own judgment are not a substitute for parallel source coverage
 - Do NOT conclude the domain is complete until all N TaskCreate entries for this domain are marked completed
 
-**Pre-finalization gate**: Before moving to Step 4d, verify via TaskList that all N collector tasks for this domain are completed. If any are still in_progress or pending, dispatch the missing ones.
+**Pre-finalization gate**: Before moving to Step 4d, verify via TaskList that all N collector tasks for this domain are completed. If any are still in_progress or pending, resume the loop at that iteration.
 
 ### 4d: Final pass
 
