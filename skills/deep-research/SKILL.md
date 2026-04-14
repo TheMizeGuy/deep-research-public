@@ -125,11 +125,11 @@ TaskCreate: "Write vault docs + MOC" for the final phase
 TaskCreate: "Memory integration + cleanup" for the last phase
 ```
 
-## Step 4: For each domain -- dispatch collectors, then synthesize
+## Step 4: For each domain -- collect and synthesize
 
-Process each domain ONE AT A TIME (sequential). For each domain, YOU (the skill orchestrator) dispatch the Sonnet collectors directly, then pass their collected findings to an Opus synthesizer.
+Process each domain ONE AT A TIME (sequential). For each domain, YOU (the skill orchestrator, Opus main agent) dispatch Sonnet collectors and synthesize their findings incrementally into the vault file yourself. No separate synthesizer subagent -- you ARE the synthesizer.
 
-**Why the skill dispatches collectors, not a manager subagent**: Subagents do NOT reliably receive the Agent tool at runtime (confirmed Claude Code platform limitation -- affects both plugin types AND general-purpose subagents). The main agent (you, running this skill) DOES have the Agent tool. So collector dispatch happens here, at the skill level.
+**Why you do both dispatching AND synthesis**: Subagents do NOT reliably receive the Agent tool at runtime (confirmed Claude Code platform limitation). You (the main agent running this skill) are the only agent guaranteed to have it. And since you're already Opus, there's no quality loss from synthesizing inline vs dispatching a separate Opus synthesizer.
 
 ### 4a: Plan collector tasks for this domain
 
@@ -143,58 +143,11 @@ Break the domain's SCOPE into exactly COLLECTOR BUDGET non-overlapping tasks. Ea
 | GitHub/community | gh CLI searches, issue scans | Open issues, release notes |
 | Academic/specs | WebSearch for arxiv, RFCs, official specs | Foundational concepts |
 
-### 4b: Dispatch collectors ONE AT A TIME
+### 4b: Scaffold the output file
 
-For each planned task, dispatch a Sonnet collector. Collect its output. Then dispatch the next. If an earlier collector reveals gaps, adjust the next collector's briefing.
+Before dispatching any collectors, write the skeleton to the OUTPUT PATH:
 
-```
-Agent({
-  description: "Collect <task type> for <domain name>",
-  subagent_type: "deep-research:data-collector",
-  model: "sonnet",
-  prompt: "You are a DATA COLLECTOR for the deep-research plugin. Execute ONE narrow data-collection task and return structured raw findings.\n\nTASK: <specific collection job>\nSOURCES TO CHECK: <explicit queries, URLs, library IDs, or paths>\nMAX OUTPUT: 2000 words\n\nReturn one H2 section per source with Date, Relevance, and Claims. End with a Collection Summary. Do NOT synthesize across sources. Do NOT write files. Flag any claim from model recall with [recall]."
-})
-```
-
-Save each collector's returned findings. You will need ALL of them for the synthesizer.
-
-### 4c: Dispatch the Opus synthesizer with collected findings
-
-After ALL collectors for this domain have returned, dispatch an Opus agent to synthesize their findings into the vault file. The synthesizer does NOT need the Agent tool -- it only reads, grades, deduplicates, and writes.
-
-```
-Agent({
-  description: "Synthesize: <domain name>",
-  model: "opus",
-  prompt: "<synthesizer prompt below, with all fields filled in>"
-})
-```
-
-Synthesizer prompt (fill in all fields):
-
-````
-You are a RESEARCH SYNTHESIZER. You receive raw findings from data collectors and produce a structured vault reference file.
-
-DOMAIN: <domain name>
-OUTPUT PATH: <absolute path>
-LINE COUNT TARGET: <800-1500>
-WIKILINK SUGGESTIONS: <list>
-
-You have been given findings from <N> data collectors below. Your job:
-1. Deduplicate claims across collector outputs
-2. Apply confidence grading to every non-trivial claim:
-   [P] = primary source (official docs, engineering posts, arxiv)
-   [S] = secondary source (blog posts, articles, tutorials)
-   [P x N] = N primary sources independently confirm
-   [V] = verified (only if YOU can verify via a tool call)
-   [recall] = from model training data, unverified
-3. Organize by topic following the SCOPE
-4. Flag gaps -- sub-questions with no findings
-5. Write the synthesis file to OUTPUT PATH
-6. If GoodMem is configured, write ONE memory with key findings
-
-Output file format:
-
+```markdown
 ---
 goodmem_ingest: true
 goodmem_scope: cross-project
@@ -206,50 +159,46 @@ tags: [<topic>, <sub-topics>]
 
 # <DOMAIN title>
 
-<overview>
+<1-2 sentence overview of the domain>
+```
 
-## <Sub-topic>
+### 4c: Dispatch collectors and synthesize INCREMENTALLY
 
-<Dense content: tables, code blocks, examples>
+This is the core loop. Dispatch one Sonnet collector, wait for it to return, immediately synthesize its findings into the output file yourself, then dispatch the next.
 
-[Repeat per sub-topic]
+**For each collector (repeat COLLECTOR BUDGET times):**
 
-## Gaps and Open Questions
+1. **Dispatch** the collector:
+   ```
+   Agent({
+     description: "Collect <task type> for <domain name>",
+     subagent_type: "deep-research:data-collector",
+     model: "sonnet",
+     prompt: "You are a DATA COLLECTOR for the deep-research plugin. Execute ONE narrow data-collection task and return structured raw findings.\n\nTASK: <specific collection job>\nSOURCES TO CHECK: <explicit queries, URLs, library IDs, or paths>\nMAX OUTPUT: 2000 words\n\nReturn one H2 section per source with Date, Relevance, and Claims. End with a Collection Summary. Do NOT synthesize across sources. Do NOT write files. Flag any claim from model recall with [recall]."
+   })
+   ```
 
-<Unanswered sub-questions>
+2. **When the collector returns**, YOU immediately:
+   - Read its findings
+   - Apply confidence grading: [P] primary, [S] secondary, [P x N] cross-verified, [V] tool-verified, [recall] unverified
+   - Deduplicate against what's already in the output file
+   - Write the graded findings into the appropriate sections of the output file (use Edit to append, or Write to update)
+   - Note gaps the next collector should target
 
-## References
+3. **Dispatch the next collector.** Adjust its briefing to target gaps from earlier collectors.
 
-<All sources cited>
+### 4d: Final pass
 
-Quality rules:
-- Tables over prose
-- Every claim gets inline confidence grade
-- No AI slop, no emojis, no trailing summary
-- Cross-link vault files with wikilinks
-- Concrete examples, code blocks
-- Absolute ISO dates only
+After the last collector returns and you've integrated its findings:
 
-Report back (under 200 words):
-FILE: <path>
-LINES: <count>
-SECTIONS: <H2 list>
-SOURCES: <count>
-GAPS: <list or "none">
-
----
-
-COLLECTOR FINDINGS:
-
-<Paste ALL collector outputs here, separated by "--- COLLECTOR N ---" headers>
-````
-
-### 4d: After synthesizer returns
-
-1. Mark the domain's TaskCreate entry as completed
-2. Verify the output file exists: `wc -l <output path>`
-3. Note any reported gaps for the MOC
-4. Read the synthesizer's summary
+1. Read the full output file
+2. Add `## Gaps and Open Questions` section (sub-questions no collector answered)
+3. Add `## References` section (consolidate all sources cited)
+4. Quality check: confidence grades on every claim, tables over prose, no AI slop
+5. Write the final version to OUTPUT PATH
+6. If GoodMem is configured, write ONE memory with key findings
+7. Mark the domain's TaskCreate entry as completed
+8. Verify the output file: `wc -l <output path>`
 
 ## Step 5: Write vault docs (Tier 3) or MOC (all tiers)
 
