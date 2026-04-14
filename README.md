@@ -23,17 +23,17 @@ The plugin runs fully autonomously:
 
 ## Tier system
 
-| Domains | Tier | Architecture | Agents |
+| Domains | Tier | Collectors per manager | Agents |
 |---|---|---|---|
-| 1-2 | 1 | Solo manager researches directly | 1 Opus per domain |
-| 3-5 | 2 | Manager dispatches 2-4 Sonnet collectors, then synthesizes | 3-5 Opus + 6-20 Sonnet |
-| 6+ | 3 | Multiple managers, each with collectors, intermediate synthesis | 6+ Opus + 12-24 Sonnet |
+| 1-2 | 1 | 2 minimum | 1 Opus + 2 Sonnet per domain |
+| 3-5 | 2 | 4 minimum | 1 Opus + 4 Sonnet per domain |
+| 6+ | 3 | 6 minimum | Multiple Opus managers, each with 6+ Sonnet collectors |
 
-### Structural enforcement (Tier 2/3)
+Every tier uses the same Opus manager that MUST dispatch Sonnet collectors. There is no solo/direct-research path.
 
-The Tier 2/3 manager agent (`research-manager.md`) does **not have** WebSearch, WebFetch, or context7 tools. It literally cannot do the research itself -- it must dispatch data-collector agents. This is a structural fix for the behavioral bypass where LLMs skip delegation and research directly.
+### Structural enforcement
 
-The Tier 1 manager (`research-manager-solo.md`) has research tools but no Agent tool -- it cannot dispatch sub-agents.
+The manager agent (`research-manager.md`) does **not have** WebSearch, WebFetch, or context7 tools. It literally cannot do the research itself -- it must dispatch data-collector agents. This is a structural fix for the behavioral bypass where LLMs skip delegation and research directly.
 
 ## Installation
 
@@ -80,7 +80,6 @@ Every file includes:
 |---|---|---|
 | Skill | `deep-research` | Entry point; parses args, runs recon, decomposes topic, dispatches managers, writes MOC |
 | Agent | `research-manager` | Tier 2/3 Opus manager; dispatches Sonnet collectors, synthesizes findings. No direct research tools |
-| Agent | `research-manager-solo` | Tier 1 Opus researcher; researches directly with WebSearch/context7. No Agent tool |
 | Agent | `data-collector` | Sonnet collector; executes one narrow research task, returns structured raw findings |
 
 ## Optional enhancements

@@ -60,11 +60,13 @@ For each domain, produce:
 
 ### 3b: Auto-detect tier (unless --tier forced)
 
-| Domains | Tier | Behavior |
-|---|---|---|
-| 1-2 | 1 | Single research-manager-solo per domain, no collectors |
-| 3-5 | 2 | Single research-manager per domain, each with 2-4 collectors |
-| 6+ | 3 | Multiple research-managers, each with 2-4 collectors, intermediate synthesis files |
+Every tier dispatches an Opus manager with mandatory Sonnet collectors. No tier does solo research.
+
+| Domains | Tier | Collectors per manager | Behavior |
+|---|---|---|---|
+| 1-2 | 1 | 2 minimum | Single manager per domain, 2+ collectors each |
+| 3-5 | 2 | 4 minimum | Single manager per domain, 4+ collectors each |
+| 6+ | 3 | 6 minimum | Multiple managers, 6+ collectors each, intermediate synthesis files |
 
 ### 3c: Auto-detect vault path (unless --path forced)
 
@@ -103,40 +105,16 @@ TaskCreate: "Memory integration + cleanup" for the last phase
 
 For each domain, dispatch a manager agent. Dispatch them ONE AT A TIME (sequential).
 
-Two agent types exist — pick based on tier:
+**All tiers** use `agents/research-manager.md` — the collector-dispatching variant. There is no solo/direct-research path. The manager has Agent tool for dispatching but NOT WebSearch/WebFetch/context7, making it structurally impossible to bypass collectors.
 
-| Tier | Agent definition | Has Agent tool? | Has WebSearch/context7? | Dispatch method |
-|---|---|---|---|---|
-| 1 | `agents/research-manager-solo.md` | No | Yes — researches directly | General-purpose (needs WebSearch) |
-| 2 or 3 | `agents/research-manager.md` | Yes — dispatches collectors | **No** — structurally cannot bypass | `subagent_type: "deep-research:research-manager"` (enforces tool restriction) |
-
-**Tier 1**: dispatch as general-purpose (read agent file, inline in prompt). The solo manager needs WebSearch/context7 which general-purpose provides.
-
-**Tier 2/3**: dispatch via `subagent_type: "deep-research:research-manager"`. This enforces the structural tool restriction — the manager has Agent tool for dispatching collectors but NOT WebSearch/WebFetch/context7, making it impossible to bypass collector dispatch.
-
-### How to dispatch
-
-**Tier 1:**
-1. Read `agents/research-manager-solo.md` (everything after the second `---` frontmatter delimiter).
-2. Dispatch as general-purpose with the system prompt + briefing:
-
-```
-Agent({
-  description: "Research: <domain name>",
-  model: "opus",
-  prompt: "<solo agent system prompt>\n\n---\n\nBRIEFING:\n<briefing fields>"
-})
-```
-
-**Tier 2/3:**
-1. Dispatch via plugin agent type with briefing only (the agent gets its system prompt from the definition file):
+Dispatch via `subagent_type: "deep-research:research-manager"` to enforce the tool restriction:
 
 ```
 Agent({
   description: "Research: <domain name>",
   subagent_type: "deep-research:research-manager",
   model: "opus",
-  prompt: "<briefing fields only — no need to inline system prompt>"
+  prompt: "<briefing fields>"
 })
 ```
 
@@ -150,7 +128,7 @@ SCOPE:
 - ... (10-30 sub-questions)
 
 TIER: <1|2|3>
-COLLECTOR BUDGET: <0 for Tier 1, 2-4 for Tier 2/3>
+COLLECTOR BUDGET: <2 for Tier 1, 4 for Tier 2, 6 for Tier 3>
 OUTPUT PATH: <absolute path — vault path for Tier 1/2, scratch dir for Tier 3>
 LINE COUNT TARGET: <800-1500 depending on domain breadth>
 WIKILINK SUGGESTIONS: <list of existing vault files to cross-link to>
