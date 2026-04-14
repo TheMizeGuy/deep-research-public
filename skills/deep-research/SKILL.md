@@ -121,9 +121,59 @@ Use TaskCreate to log each domain as a task. This gives the user visibility into
 
 ```
 TaskCreate: "Research domain: <domain name>" for each domain
-TaskCreate: "Write vault docs + MOC" for the final phase
-TaskCreate: "Memory integration + cleanup" for the last phase
+TaskCreate: "Finalize MOC cross-cutting sections + cleanup"
 ```
+
+### 3f: Initialize the MOC scaffold
+
+Before processing any domains, write the MOC skeleton at `<vault path>/00 - Index.md`. This becomes the index file that you update as each domain completes (step 4e) -- users and other agents can read it mid-run to see progress.
+
+```markdown
+---
+goodmem_ingest: true
+goodmem_scope: cross-project
+type: moc
+topic: <topic-keyword>
+date: <today YYYY-MM-DD>
+updated: <today YYYY-MM-DD>
+tags: [<topic>, moc]
+status: in-progress
+---
+
+# <Topic>
+
+<1-2 sentence overview -- write this now from your understanding of the topic.>
+
+## Map of this vault section
+
+| # | Note | What's in it | Lines |
+|---|---|---|---|
+| 00 | [[00 - Index]] | You are here | this |
+| 01 | [[01 - <Domain 1 title>]] | _pending_ | _pending_ |
+| 02 | [[02 - <Domain 2 title>]] | _pending_ | _pending_ |
+| ... (one row per planned domain) | | _pending_ | _pending_ |
+
+## Key findings
+
+_Populated after all domains complete (step 5)._
+
+## Gaps and open questions
+
+_Populated after all domains complete (step 5)._
+
+## Cross-references
+
+_Populated after all domains complete (step 5)._
+
+## Session provenance
+
+- Date: <today>
+- Tier: <1-5>
+- Domains: <N>
+- Status: in-progress
+```
+
+Rationale: interrupt resilience (a partial MOC is more useful than none) and visible progress in Obsidian as rows flip from `_pending_` to filled.
 
 ## Step 4: For each domain -- collect and synthesize
 
@@ -268,78 +318,73 @@ After verification:
 4. Quality check: confidence grades on every claim, tables over prose, no AI slop
 5. Write the final version to OUTPUT PATH
 6. If GoodMem is configured, write ONE memory with key findings
-7. Mark the domain's TaskCreate entry as completed
-8. Verify the output file: `wc -l <output path>`
+7. Verify the output file: `wc -l <output path>` -- capture the line count for step 4e
 
-## Step 5: Write vault docs (Tier 3) or MOC (all tiers)
+### 4e: Update the MOC for this domain + force-sync to goodmem
 
-### Tier 4-5: Rewrite from scratch dir to vault
+Immediately after step 4d (before starting the next domain), update the MOC and push this domain's vault file to goodmem:
 
-For Tier 4-5, managers wrote to the scratch dir. Now move/rewrite to the vault:
+1. **Update the MOC map row for this domain.** Use Edit on `<vault path>/00 - Index.md` to replace the `_pending_` row you scaffolded in step 3f. Change:
+   ```
+   | NN | [[NN - <Title>]] | _pending_ | _pending_ |
+   ```
+   to:
+   ```
+   | NN | [[NN - <Title>]] | <one-line summary of what's in the domain file> | <line count from 4d step 7> |
+   ```
 
-1. Read each manager's synthesis file from the scratch dir
-2. Write final vault files to the vault path with the same content (the manager already applied the frontmatter and quality bar)
-3. Verify each file landed: `wc -l <vault path>/<file>`
+2. **Bump the MOC's `updated:` frontmatter field** to today's date.
 
-### All tiers: Write the MOC
+3. **If GoodMem ingestion is configured**, force-sync this domain's vault file into goodmem so it's queryable immediately rather than waiting for the scheduled ingest job:
+   ```bash
+   ~/.local/bin/vault-ingest-goodmem.sh
+   ```
+   The ingester is idempotent (UUID5 from content hash) -- re-ingesting prior domains on every call is cheap and safe. If GoodMem is not configured, skip this step.
 
-Write `00 - Index.md` at the vault path. Follow this structure:
+4. **Mark the domain's TaskCreate entry as completed.**
 
-```markdown
----
-goodmem_ingest: true
-goodmem_scope: cross-project
-type: moc
-topic: <topic-keyword>
-date: <today YYYY-MM-DD>
-updated: <today YYYY-MM-DD>
-tags: [<topic>, moc]
-status: published
----
+5. Begin the next domain at step 4a. If this was the final domain, proceed to step 5.
 
-# <Topic>
+**Why per-domain, not batched at end**: interrupt resilience (MOC and goodmem reflect whichever domains completed), less context pressure on the final pass, and visible progress in Obsidian as each row flips from `_pending_` to filled.
 
-<1-2 sentence overview of what this vault section covers and when it was compiled.>
+## Step 5: Finalize the MOC (cross-cutting sections)
 
-## Map of this vault section
+At this point the MOC's `## Map of this vault section` table is already filled (you updated it per-domain in step 4e), every domain vault file exists, and each domain has its own goodmem memory if GoodMem is configured. What remains is the cross-cutting content that required seeing all domains first.
 
-| # | Note | What's in it | Lines |
-|---|---|---|---|
-| 00 | [[00 - Index]] | You are here | this |
-| 01 | [[01 - <Title>]] | <one-line summary> | <N> |
-| ... | ... | ... | ... |
+Edit `<vault path>/00 - Index.md` to replace the three `_Populated after all domains complete (step 5)._` placeholders:
 
-## Key findings
+1. **Fill `## Key findings`** -- a table of the 5-10 most important findings across ALL domains, each with evidence citation and a wikilink to the source domain file. Deduplicate findings that appear in multiple domains:
+   ```
+   | Finding | Evidence | File |
+   |---|---|---|
+   | <finding> | <source citation> | [[NN - ...]] |
+   ```
 
-| Finding | Evidence | File |
-|---|---|---|
-| <most important finding 1> | <source citation> | [[01 - ...]] |
-| <most important finding 2> | <source citation> | [[02 - ...]] |
-| ... | ... | ... |
+2. **Fill `## Gaps and open questions`** -- aggregate unanswered sub-questions from each domain's `## Gaps and Open Questions` section. Group related gaps:
+   ```
+   | Gap | Source file | When to fill |
+   |---|---|---|
+   | <unanswered question> | [[NN - ...]] | <suggested trigger> |
+   ```
 
-## Gaps and open questions
+3. **Fill `## Cross-references`** -- wikilinks to existing vault sections adjacent to this topic. Pull from the Step 2 reconnaissance:
+   ```
+   - [[../existing vault section 1]] -- <why relevant>
+   - [[../existing vault section 2]] -- <why relevant>
+   ```
 
-| Gap | Source file | When to fill |
-|---|---|---|
-| <unanswered question from manager reports> | [[NN - ...]] | <suggested trigger> |
+4. **Flip `status:` frontmatter** from `in-progress` to `published`. Bump `updated:` to today.
 
-## Cross-references
-
-- [[../existing vault section 1]] -- <why relevant>
-- [[../existing vault section 2]] -- <why relevant>
-
-## Session provenance
-
-- Date: <today>
-- Tier: <1-5>
-- Managers dispatched: <N>
-- Total agents (managers + collectors): <N>
-- Total output lines: <N>
-```
+5. **Fill `## Session provenance`** with final numbers:
+   ```
+   - Date: <today>
+   - Tier: <1-5>
+   - Domains: <N>
+   - Total collectors dispatched: <sum across domains>
+   - Total output lines: <sum of all domain files + MOC>
+   ```
 
 ## Step 6: Cleanup + report
-
-Each manager already wrote its domain findings to goodmem directly (one memory per domain with key findings, gaps, and vault file path). You do NOT need to parse their output or write a distilled learning — they handled it.
 
 ### Clean up scratch dir (Tier 4+ only)
 
@@ -356,9 +401,9 @@ Research complete.
 
 Topic: <topic>
 Vault path: <path>
-Files: <N> + MOC index
+Files: <N> domain files + MOC index
 Total lines: <N>
-Tier: <1-5> (<N> managers, <N> collectors)
+Tier: <1-5> (<total> collectors)
 
 Key findings:
 - <finding 1>
@@ -368,13 +413,16 @@ Key findings:
 
 Do NOT add a trailing summary or explanation beyond this block.
 
+Mark the final "Finalize MOC cross-cutting sections + cleanup" TaskCreate entry as completed.
+
 ## Error handling
 
 | Error | Action |
 |---|---|
 | No topic provided | Ask user and stop |
 | goodmem retrieve fails | Continue without prior art (degrade gracefully) |
-| Manager agent fails to return | Log the failure, skip the domain, note it as a gap in the MOC |
-| Manager output file missing | Log warning, note as gap, continue |
+| A collector fails to return | Log the failure, skip that slot, note the gap in the domain file and in step 4e's map-row summary |
+| A domain's output file missing after 4d | Log warning, note as gap in the MOC, continue with next domain |
 | Vault path permission error | Tell user and stop |
-| All managers fail | Tell user the research failed and suggest retrying with --tier 1 |
+| vault-ingest-goodmem.sh fails (step 4e) | Warn user that auto-ingest will pick it up on its next scheduled run; continue to next domain |
+| All domains fail | Tell user the research failed and suggest retrying with --tier 1 |
