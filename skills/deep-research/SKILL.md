@@ -131,9 +131,9 @@ Process each domain ONE AT A TIME (sequential). For each domain, YOU (the skill 
 
 **Why you do both dispatching AND synthesis**: Subagents do NOT reliably receive the Agent tool at runtime (confirmed Claude Code platform limitation). You (the main agent running this skill) are the only agent guaranteed to have it. And since you're already Opus, there's no quality loss from synthesizing inline vs dispatching a separate Opus synthesizer.
 
-### 4a: Plan collector tasks for this domain
+### 4a: Plan ALL collector tasks upfront (commit before dispatching)
 
-Break the domain's SCOPE into exactly COLLECTOR BUDGET non-overlapping tasks. Each collector covers ~3-5 sub-questions.
+Compute COLLECTOR BUDGET per 3b.1. Break the domain's SCOPE into EXACTLY that number of non-overlapping tasks -- no more, no fewer. Each collector covers ~3-5 sub-questions.
 
 | Collector task type | What it does | Best for |
 |---|---|---|
@@ -142,6 +142,26 @@ Break the domain's SCOPE into exactly COLLECTOR BUDGET non-overlapping tasks. Ea
 | Vault + memory scan | Read existing vault files + goodmem retrieve | Prior learnings, existing reference docs |
 | GitHub/community | gh CLI searches, issue scans | Open issues, release notes |
 | Academic/specs | WebSearch for arxiv, RFCs, official specs | Foundational concepts |
+
+**MANDATORY PRE-COMMITMENT**: Before dispatching ANY collector, present the full collector plan as a table and commit to executing every row:
+
+```
+Domain: <name> -- COLLECTOR BUDGET: N
+| # | Type | Task | Sub-questions covered |
+|---|---|---|---|
+| 1 | Web research | <specific task> | Q1, Q3, Q7 |
+| 2 | Library docs | <specific task> | Q2, Q5 |
+| ... (continue for all N collectors) |
+```
+
+Then create TaskCreate entries for each collector -- one per planned task:
+```
+TaskCreate: "Collector 1/N: <task>" (domain <domain name>)
+TaskCreate: "Collector 2/N: <task>" (domain <domain name>)
+... (one per collector, N total)
+```
+
+This pre-commitment is the enforcement mechanism. You will verify all N TaskCreate entries are completed before moving to Step 4d.
 
 ### 4b: Scaffold the output file
 
@@ -162,13 +182,20 @@ tags: [<topic>, <sub-topics>]
 <1-2 sentence overview of the domain>
 ```
 
-### 4c: Dispatch collectors and synthesize INCREMENTALLY
+### 4c: Dispatch ALL collectors -- no early termination
 
-This is the core loop. Dispatch one Sonnet collector, wait for it to return, immediately synthesize its findings into the output file yourself, then dispatch the next.
+You MUST dispatch every collector planned in Step 4a. Stopping early because findings seem "sufficient" is a failure. The whole point of N collectors is proportional coverage -- one collector cannot substitute for the full plan.
 
-**For each collector (repeat COLLECTOR BUDGET times):**
+**For each collector i in [1..N]:**
 
-1. **Dispatch** the collector:
+1. **Announce the dispatch** in your output (so the user can see the count):
+   ```
+   Dispatching collector <i>/N for domain "<domain>": <task type> -- <task description>
+   ```
+
+2. **Mark the TaskCreate entry in_progress** for this collector.
+
+3. **Dispatch** the collector:
    ```
    Agent({
      description: "Collect <task type> for <domain name>",
@@ -178,18 +205,29 @@ This is the core loop. Dispatch one Sonnet collector, wait for it to return, imm
    })
    ```
 
-2. **When the collector returns**, YOU immediately:
+4. **When the collector returns**, YOU immediately:
    - Read its findings
    - Apply confidence grading: [P] primary, [S] secondary, [P x N] cross-verified, [V] tool-verified, [recall] unverified
    - Deduplicate against what's already in the output file
    - Write the graded findings into the appropriate sections of the output file (use Edit to append, or Write to update)
    - Note gaps the next collector should target
+   - Mark the TaskCreate entry completed for this collector
 
-3. **Dispatch the next collector.** Adjust its briefing to target gaps from earlier collectors.
+5. **Dispatch the next collector.** Adjust its briefing to target gaps from earlier collectors if relevant -- but DO NOT skip it. Every collector in your Step 4a plan runs, period.
+
+**Absolute prohibitions**:
+- Do NOT stop after collector 1 because "the findings look sufficient" -- run all N
+- Do NOT merge two planned collectors into one dispatch to save time -- each is separate
+- Do NOT skip a collector because earlier ones covered "most" of its sub-questions -- gaps from your own judgment are not a substitute for parallel source coverage
+- Do NOT conclude the domain is complete until all N TaskCreate entries for this domain are marked completed
+
+**Pre-finalization gate**: Before moving to Step 4d, verify via TaskList that all N collector tasks for this domain are completed. If any are still in_progress or pending, dispatch the missing ones.
 
 ### 4d: Final pass
 
-After the last collector returns and you've integrated its findings:
+**FIRST**: Verify all N collector TaskCreate entries for this domain are marked completed. Use TaskList to check. If ANY are still pending or in_progress, go back to Step 4c and dispatch the missing ones. Do NOT proceed with final pass until every collector in your plan has returned.
+
+After verification:
 
 1. Read the full output file
 2. Add `## Gaps and Open Questions` section (sub-questions no collector answered)
