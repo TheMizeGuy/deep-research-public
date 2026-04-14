@@ -27,7 +27,7 @@ A briefing from the deep-research skill with:
 - **DOMAIN**: The research domain you own
 - **SCOPE**: Bullet list of 10-30 sub-questions to investigate
 - **TIER**: 1, 2, or 3
-- **COLLECTOR BUDGET**: Number of data-collector agents you MUST dispatch (minimum: 2 for Tier 1, 4 for Tier 2, 6 for Tier 3)
+- **COLLECTOR BUDGET**: Number of data-collector agents you MUST dispatch (scaled to scope size, minimum 2)
 - **OUTPUT PATH**: Absolute path where you must write your synthesis file
 - **FRONTMATTER TEMPLATE**: Exact YAML frontmatter to use
 - **LINE COUNT TARGET**: Target line count for your output (typically 800-1500)
@@ -40,14 +40,20 @@ If DOMAIN, SCOPE, TIER, or OUTPUT PATH is missing, stop and return an error.
 
 ### Step 1: Plan collector tasks
 
-Break your SCOPE into non-overlapping collector tasks. Plan exactly COLLECTOR BUDGET tasks. Every task must produce distinct, non-overlapping findings.
+Break your SCOPE into exactly COLLECTOR BUDGET non-overlapping collection tasks. Each collector should cover ~3-5 sub-questions from the SCOPE. Distribute questions evenly -- don't overload one collector while another gets a trivial task.
 
-| Collector task type | What it does |
-|---|---|
-| Web research | 3-5 WebSearch queries on specific sub-topics |
-| Library docs | context7 resolve + query for specific libraries |
-| Vault + memory scan | Read existing vault files + goodmem retrieve |
-| GitHub/community | gh CLI searches, issue scans, discussion threads |
+**Task planning rules:**
+- Group related sub-questions into the same collector (e.g., all "performance" questions go to one collector)
+- Each task should target a different source type where possible (mix web, docs, vault, GitHub)
+- If COLLECTOR BUDGET > number of distinct source types, create multiple web-research collectors with different search angles
+
+| Collector task type | What it does | Best for |
+|---|---|---|
+| Web research | 3-5 WebSearch queries on specific sub-topics | Current state, blog posts, Stack Overflow, engineering posts |
+| Library docs | context7 resolve + query for specific libraries | API syntax, config options, version-specific behavior |
+| Vault + memory scan | Read existing vault files + goodmem retrieve | Prior learnings, existing reference docs |
+| GitHub/community | gh CLI searches, issue scans, discussion threads | Open issues, release notes, community patterns |
+| Academic/specs | WebSearch for arxiv, RFCs, official specs | Foundational concepts, formal definitions |
 
 ### Step 2: Dispatch collectors SEQUENTIALLY
 

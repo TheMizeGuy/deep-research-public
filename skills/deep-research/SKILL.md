@@ -62,11 +62,32 @@ For each domain, produce:
 
 Every tier dispatches an Opus manager with mandatory Sonnet collectors. No tier does solo research.
 
-| Domains | Tier | Collectors per manager | Behavior |
+| Domains | Tier | Collector floor | Behavior |
 |---|---|---|---|
-| 1-2 | 1 | 2 minimum | Single manager per domain, 2+ collectors each |
-| 3-5 | 2 | 4 minimum | Single manager per domain, 4+ collectors each |
-| 6+ | 3 | 6 minimum | Multiple managers, 6+ collectors each, intermediate synthesis files |
+| 1-2 | 1 | 2 | Single manager per domain |
+| 3-5 | 2 | 4 | Single manager per domain |
+| 6+ | 3 | 6 | Multiple managers, intermediate synthesis files |
+
+### 3b.1: Compute COLLECTOR BUDGET per domain
+
+The tier floor is a MINIMUM, not the actual budget. Compute per domain:
+
+```
+questions = number of sub-questions in this domain's SCOPE
+floor = tier floor from table above (2, 4, or 6)
+computed = ceil(questions / 5)     # ~5 questions per collector
+budget = max(floor, computed)
+budget = min(budget, 10)           # hard cap at 10 per manager
+```
+
+Examples:
+- Tier 1 domain with 8 questions: max(2, ceil(8/5)) = max(2, 2) = 2
+- Tier 1 domain with 15 questions: max(2, ceil(15/5)) = max(2, 3) = 3
+- Tier 2 domain with 25 questions: max(4, ceil(25/5)) = max(4, 5) = 5
+- Tier 3 domain with 30 questions: max(6, ceil(30/5)) = max(6, 6) = 6
+- Tier 3 domain with 50 questions: min(max(6, ceil(50/5)), 10) = min(10, 10) = 10
+
+This ensures narrow domains don't waste collectors while broad domains get proportional coverage. The budget is computed per domain, not globally — different domains may get different budgets.
 
 ### 3c: Auto-detect vault path (unless --path forced)
 
@@ -128,7 +149,7 @@ SCOPE:
 - ... (10-30 sub-questions)
 
 TIER: <1|2|3>
-COLLECTOR BUDGET: <2 for Tier 1, 4 for Tier 2, 6 for Tier 3>
+COLLECTOR BUDGET: <computed per 3b.1: max(tier_floor, ceil(questions/5)), capped at 10>
 OUTPUT PATH: <absolute path — vault path for Tier 1/2, scratch dir for Tier 3>
 LINE COUNT TARGET: <800-1500 depending on domain breadth>
 WIKILINK SUGGESTIONS: <list of existing vault files to cross-link to>
