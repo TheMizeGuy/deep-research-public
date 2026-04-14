@@ -125,70 +125,131 @@ TaskCreate: "Write vault docs + MOC" for the final phase
 TaskCreate: "Memory integration + cleanup" for the last phase
 ```
 
-## Step 4: Dispatch managers
+## Step 4: For each domain -- dispatch collectors, then synthesize
 
-For each domain, dispatch a manager agent. Dispatch them ONE AT A TIME (sequential).
+Process each domain ONE AT A TIME (sequential). For each domain, YOU (the skill orchestrator) dispatch the Sonnet collectors directly, then pass their collected findings to an Opus synthesizer.
 
-**All tiers** use `agents/research-manager.md` -- the collector-dispatching variant. There is no solo/direct-research path. The manager's system prompt explicitly prohibits direct use of WebSearch/WebFetch/context7 -- all research must go through dispatched collectors.
+**Why the skill dispatches collectors, not a manager subagent**: Subagents do NOT reliably receive the Agent tool at runtime (confirmed Claude Code platform limitation -- affects both plugin types AND general-purpose subagents). The main agent (you, running this skill) DOES have the Agent tool. So collector dispatch happens here, at the skill level.
 
-**CRITICAL: Dispatch as general-purpose, NOT via subagent_type.** The Agent tool is NOT available to plugin-defined agents at runtime (confirmed platform limitation). General-purpose agents reliably receive the Agent tool. The manager's system prompt enforces the research-tool prohibition even though general-purpose technically provides those tools.
+### 4a: Plan collector tasks for this domain
 
-### How to dispatch
+Break the domain's SCOPE into exactly COLLECTOR BUDGET non-overlapping tasks. Each collector covers ~3-5 sub-questions.
 
-1. Read the agent system prompt from `agents/research-manager.md` (everything after the second `---` frontmatter delimiter).
-2. Dispatch as general-purpose with the system prompt + briefing:
+| Collector task type | What it does | Best for |
+|---|---|---|
+| Web research | 3-5 WebSearch queries on specific sub-topics | Current state, blog posts, engineering posts |
+| Library docs | context7 resolve + query for specific libraries | API syntax, config options |
+| Vault + memory scan | Read existing vault files + goodmem retrieve | Prior learnings, existing reference docs |
+| GitHub/community | gh CLI searches, issue scans | Open issues, release notes |
+| Academic/specs | WebSearch for arxiv, RFCs, official specs | Foundational concepts |
+
+### 4b: Dispatch collectors ONE AT A TIME
+
+For each planned task, dispatch a Sonnet collector. Collect its output. Then dispatch the next. If an earlier collector reveals gaps, adjust the next collector's briefing.
 
 ```
 Agent({
-  description: "Research: <domain name>",
-  model: "opus",
-  prompt: "<agent system prompt from research-manager.md>\n\n---\n\nBRIEFING:\n<briefing fields below>"
+  description: "Collect <task type> for <domain name>",
+  subagent_type: "deep-research:data-collector",
+  model: "sonnet",
+  prompt: "You are a DATA COLLECTOR for the deep-research plugin. Execute ONE narrow data-collection task and return structured raw findings.\n\nTASK: <specific collection job>\nSOURCES TO CHECK: <explicit queries, URLs, library IDs, or paths>\nMAX OUTPUT: 2000 words\n\nReturn one H2 section per source with Date, Relevance, and Claims. End with a Collection Summary. Do NOT synthesize across sources. Do NOT write files. Flag any claim from model recall with [recall]."
 })
 ```
 
-Do NOT use `subagent_type: "deep-research:research-manager"` -- the Agent tool won't work.
+Save each collector's returned findings. You will need ALL of them for the synthesizer.
 
-### Briefing fields (appended after the agent system prompt)
+### 4c: Dispatch the Opus synthesizer with collected findings
+
+After ALL collectors for this domain have returned, dispatch an Opus agent to synthesize their findings into the vault file. The synthesizer does NOT need the Agent tool -- it only reads, grades, deduplicates, and writes.
 
 ```
+Agent({
+  description: "Synthesize: <domain name>",
+  model: "opus",
+  prompt: "<synthesizer prompt below, with all fields filled in>"
+})
+```
+
+Synthesizer prompt (fill in all fields):
+
+````
+You are a RESEARCH SYNTHESIZER. You receive raw findings from data collectors and produce a structured vault reference file.
+
 DOMAIN: <domain name>
-SCOPE:
-- <sub-question 1>
-- <sub-question 2>
-- ... (10-30 sub-questions)
+OUTPUT PATH: <absolute path>
+LINE COUNT TARGET: <800-1500>
+WIKILINK SUGGESTIONS: <list>
 
-TIER: <1-5>
-COLLECTOR BUDGET: <computed per 3b.1: max(tier_floor, ceil(questions/5)), capped at 10>
-OUTPUT PATH: <absolute path — vault path for Tier 1-3, scratch dir for Tier 4-5>
-LINE COUNT TARGET: <800-1500 depending on domain breadth>
-WIKILINK SUGGESTIONS: <list of existing vault files to cross-link to>
+You have been given findings from <N> data collectors below. Your job:
+1. Deduplicate claims across collector outputs
+2. Apply confidence grading to every non-trivial claim:
+   [P] = primary source (official docs, engineering posts, arxiv)
+   [S] = secondary source (blog posts, articles, tutorials)
+   [P x N] = N primary sources independently confirm
+   [V] = verified (only if YOU can verify via a tool call)
+   [recall] = from model training data, unverified
+3. Organize by topic following the SCOPE
+4. Flag gaps -- sub-questions with no findings
+5. Write the synthesis file to OUTPUT PATH
+6. If GoodMem is configured, write ONE memory with key findings
 
-FRONTMATTER TEMPLATE:
+Output file format:
+
 ---
 goodmem_ingest: true
 goodmem_scope: cross-project
 type: reference
-topic: <topic-keyword derived from domain>
+topic: <topic-keyword>
 date: <today YYYY-MM-DD>
 tags: [<topic>, <sub-topics>]
 ---
 
-QUALITY BAR:
+# <DOMAIN title>
+
+<overview>
+
+## <Sub-topic>
+
+<Dense content: tables, code blocks, examples>
+
+[Repeat per sub-topic]
+
+## Gaps and Open Questions
+
+<Unanswered sub-questions>
+
+## References
+
+<All sources cited>
+
+Quality rules:
 - Tables over prose
-- Every non-trivial claim gets an inline confidence grade: [P] primary, [S] secondary, [P x N] cross-verified, [V] verified by tool, [recall] unverified
+- Every claim gets inline confidence grade
 - No AI slop, no emojis, no trailing summary
-- Cross-link to existing vault files using wikilinks
-- Include concrete examples, code blocks, tool-call syntax where relevant
-- Use absolute ISO dates, never relative
-```
+- Cross-link vault files with wikilinks
+- Concrete examples, code blocks
+- Absolute ISO dates only
 
-### After each manager returns
+Report back (under 200 words):
+FILE: <path>
+LINES: <count>
+SECTIONS: <H2 list>
+SOURCES: <count>
+GAPS: <list or "none">
 
-1. Mark its TaskCreate entry as completed via TaskUpdate
-2. Verify the output file exists and has content: `wc -l <output path>`
-3. **Tier 2/3 collector verification**: Check the manager's report for "COLLECTORS DISPATCHED: N". If N = 0 or the field is missing, the manager failed to dispatch collectors. Re-dispatch the same domain with the same agent file and an explicit prefix in the briefing: "CRITICAL: Your predecessor failed to dispatch collectors. You MUST dispatch data-collector agents via the Agent tool BEFORE anything else."
-4. If the manager reported gaps, note them for the MOC's "gaps" section
-5. Read the manager's summary (not the full file — it's in the Agent return)
+---
+
+COLLECTOR FINDINGS:
+
+<Paste ALL collector outputs here, separated by "--- COLLECTOR N ---" headers>
+````
+
+### 4d: After synthesizer returns
+
+1. Mark the domain's TaskCreate entry as completed
+2. Verify the output file exists: `wc -l <output path>`
+3. Note any reported gaps for the MOC
+4. Read the synthesizer's summary
 
 ## Step 5: Write vault docs (Tier 3) or MOC (all tiers)
 
