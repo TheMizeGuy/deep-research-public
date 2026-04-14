@@ -1,0 +1,19 @@
+{
+  "name": "deep-research",
+  "version": "0.1.0",
+  "description": "Multi-agent deep research plugin. Auto-scales from single-agent to a 3-tier hierarchy with Opus 4.6 managers and Sonnet 4.6 data collectors based on topic complexity. Conducts reconnaissance via goodmem, decomposes topics into non-overlapping domains, dispatches research agents sequentially, synthesizes findings with confidence grading, and documents results in the Obsidian vault with goodmem ingestion. Supports slash command (/deep-research) and natural language triggers.",
+  "author": {
+    "name": "mize"
+  },
+  "keywords": [
+    "research",
+    "deep-research",
+    "multi-agent",
+    "obsidian",
+    "goodmem",
+    "knowledge-base",
+    "vault",
+    "documentation",
+    "swarm"
+  ]
+}
