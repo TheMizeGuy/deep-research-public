@@ -248,20 +248,9 @@ status: published
 - Total output lines: <N>
 ```
 
-## Step 6: Memory integration + cleanup
+## Step 6: Cleanup + report
 
-### Write distilled learning (if GoodMem configured)
-
-Write ONE learning to goodmem summarizing what was produced:
-
-```
-goodmem_memories_create({
-  space_id: "<learnings-space-id>",
-  content_type: "text/markdown",
-  original_content: "# <Topic> vault section: <N>-file reference at vault/<path>/\n\n## Context\n<1-2 sentences on what was built>\n\n## Vault map\n<table of files + line counts>\n\n## How to use\nRead 00 - Index.md first.\n\n## Complements\n<list of related vault sections>",
-  metadata: {"type": "reference", "topic": "<topic-keyword>", "date": "<today>"}
-})
-```
+Each manager already wrote its domain findings to goodmem directly (one memory per domain with key findings, gaps, and vault file path). You do NOT need to parse their output or write a distilled learning — they handled it.
 
 ### Clean up scratch dir (Tier 3 only)
 

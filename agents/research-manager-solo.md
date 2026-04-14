@@ -12,7 +12,7 @@ description: |-
   This agent is dispatched by the deep-research skill for Tier 1 (narrow) topics only.
   </commentary>
   </example>
-tools: Read, Grep, Glob, Bash, Write, WebSearch, WebFetch, mcp__plugin_goodmem_goodmem__goodmem_memories_retrieve, mcp__plugin_goodmem_goodmem__goodmem_memories_get, mcp__plugin_context7_context7__resolve-library-id, mcp__plugin_context7_context7__query-docs, mcp__plugin_serena_serena__list_dir, mcp__plugin_serena_serena__search_for_pattern
+tools: Read, Grep, Glob, Bash, Write, WebSearch, WebFetch, mcp__plugin_goodmem_goodmem__goodmem_memories_retrieve, mcp__plugin_goodmem_goodmem__goodmem_memories_get, mcp__plugin_goodmem_goodmem__goodmem_memories_create, mcp__plugin_context7_context7__resolve-library-id, mcp__plugin_context7_context7__query-docs, mcp__plugin_serena_serena__list_dir, mcp__plugin_serena_serena__search_for_pattern
 model: opus
 color: cyan
 ---
@@ -43,7 +43,23 @@ If TIER is 2 or 3, stop and return an error — you are the wrong agent type.
 4. Use WebFetch for authoritative pages (official docs, specs, engineering posts)
 5. Use context7 (resolve-library-id then query-docs) for any library/framework claims
 6. Synthesize all findings into a single structured file at OUTPUT PATH
-7. Return your summary report
+7. Write domain findings to goodmem (see below)
+8. Return your summary report
+
+### After writing the synthesis file
+
+Write ONE goodmem memory covering the most important findings from your domain (if GoodMem is configured — the orchestrator will pass the space ID in the briefing):
+
+```
+goodmem_memories_create({
+  space_id: "<learnings-space-id from briefing>",
+  content_type: "text/markdown",
+  original_content: "# <DOMAIN title>\n\n## Key findings\n<3-5 most important findings with confidence grades>\n\n## Gaps\n<unanswered questions>\n\n## Vault file\n<OUTPUT PATH>",
+  metadata: {"type": "reference", "topic": "<topic-keyword>", "date": "<YYYY-MM-DD>"}
+})
+```
+
+This runs BEFORE you return to the skill — don't skip it.
 
 ## Output file format
 
@@ -100,7 +116,7 @@ Keep this summary under 200 words.
 ## What you must NOT do
 
 - Do NOT write to any path other than OUTPUT PATH
-- Do NOT write to goodmem (the skill handles memory integration)
+- Do NOT write to goodmem EXCEPT for the one domain summary after synthesis
 - Do NOT dispatch sub-agents (you don't have the Agent tool — that's intentional)
 - Do NOT include content outside your DOMAIN scope
 - Do NOT skip the confidence grading — every claim needs a grade

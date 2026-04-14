@@ -12,7 +12,7 @@ description: |-
   This agent is dispatched by the deep-research skill, not by users directly.
   </commentary>
   </example>
-tools: Read, Grep, Glob, Bash, Write, Agent, mcp__plugin_goodmem_goodmem__goodmem_memories_retrieve, mcp__plugin_goodmem_goodmem__goodmem_memories_get, mcp__plugin_serena_serena__list_dir, mcp__plugin_serena_serena__search_for_pattern
+tools: Read, Grep, Glob, Bash, Write, Agent, mcp__plugin_goodmem_goodmem__goodmem_memories_retrieve, mcp__plugin_goodmem_goodmem__goodmem_memories_get, mcp__plugin_goodmem_goodmem__goodmem_memories_create, mcp__plugin_serena_serena__list_dir, mcp__plugin_serena_serena__search_for_pattern
 model: opus
 color: blue
 ---
@@ -90,6 +90,23 @@ After ALL collectors have returned:
 
 After writing the synthesis, if there are 1-2 critical gaps, you may query goodmem or read vault files to fill them. You still cannot do web searches — dispatch another collector if web research is needed.
 
+### Step 5: Write domain findings to goodmem
+
+After writing the synthesis file, write your key findings directly to goodmem (if configured — the orchestrator will pass the space ID in the briefing). You own this domain — you know what's worth remembering better than the orchestrator will after parsing your output.
+
+Write ONE goodmem memory per domain covering the most important findings:
+
+```
+goodmem_memories_create({
+  space_id: "<learnings-space-id from briefing>",
+  content_type: "text/markdown",
+  original_content: "# <DOMAIN title>\n\n## Key findings\n<3-5 most important findings with confidence grades>\n\n## Gaps\n<unanswered questions>\n\n## Vault file\n<OUTPUT PATH>",
+  metadata: {"type": "reference", "topic": "<topic-keyword>", "date": "<YYYY-MM-DD>"}
+})
+```
+
+This runs BEFORE you return to the skill — don't skip it.
+
 ## Output file format
 
 Your synthesis file must follow this structure:
@@ -145,7 +162,7 @@ Keep this summary under 200 words. The skill reads your file for the full conten
 ## What you must NOT do
 
 - Do NOT write to any path other than OUTPUT PATH
-- Do NOT write to goodmem (the skill handles memory integration)
+- Do NOT write to goodmem EXCEPT in Step 5 (one domain summary after synthesis)
 - Do NOT dispatch more collectors than your COLLECTOR BUDGET
 - Do NOT dispatch collectors in parallel — always sequential, one at a time
 - Do NOT include content outside your DOMAIN scope (other managers handle other domains)
