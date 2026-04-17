@@ -82,7 +82,7 @@ This is the core loop. Dispatch one collector, wait for it to return, immediatel
    Agent({
      description: "Collect <task type> for <domain>",
      subagent_type: "deep-research:data-collector",
-     model: "sonnet",
+     model: "opus",
      prompt: "<briefing with TASK, SOURCES TO CHECK, MAX OUTPUT: 2000 words>"
    })
    ```

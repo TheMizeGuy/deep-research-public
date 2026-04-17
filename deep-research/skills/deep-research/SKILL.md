@@ -1,7 +1,7 @@
 ---
 name: deep-research
 description: |-
-  Conduct deep, multi-agent research on a topic and document findings in an Obsidian vault with optional goodmem ingestion. Auto-scales from single-agent (narrow topics) to full 3-tier hierarchy with Opus managers and Sonnet data collectors (broad topics). Use when the user asks to "deep research", "do comprehensive research on", "research everything about", "build a knowledge base on", or "create a reference on" a topic. Do NOT use for quick factual questions, single lookups, or casual "what is X" queries.
+  Conduct deep, multi-agent research on a topic and document findings in an Obsidian vault with optional goodmem ingestion. Auto-scales from single-agent (narrow topics) to full 3-tier hierarchy with Opus managers and Opus data collectors (broad topics). Use when the user asks to "deep research", "do comprehensive research on", "research everything about", "build a knowledge base on", or "create a reference on" a topic. Do NOT use for quick factual questions, single lookups, or casual "what is X" queries.
 argument-hint: '<topic> [--path <vault-path>] [--tier <1-5>]'
 allowed-tools: Bash, Read, Write, Grep, Glob, Agent, TodoWrite, TaskCreate, TaskUpdate, WebSearch, WebFetch, mcp__plugin_goodmem_goodmem__goodmem_memories_retrieve, mcp__plugin_goodmem_goodmem__goodmem_memories_get, mcp__plugin_goodmem_goodmem__goodmem_memories_create
 ---
@@ -60,7 +60,7 @@ For each domain, produce:
 
 ### 3b: Auto-detect tier (unless --tier forced)
 
-Every tier dispatches an Opus manager with mandatory Sonnet collectors. No tier does solo research.
+Every tier dispatches an Opus manager with mandatory Opus collectors. No tier does solo research.
 
 | Domains | Tier | Collector floor | Behavior |
 |---|---|---|---|
@@ -177,7 +177,7 @@ Rationale: interrupt resilience (a partial MOC is more useful than none) and vis
 
 ## Step 4: For each domain -- collect and synthesize
 
-Process each domain ONE AT A TIME (sequential). For each domain, YOU (the skill orchestrator, Opus main agent) dispatch Sonnet collectors and synthesize their findings incrementally into the vault file yourself. No separate synthesizer subagent -- you ARE the synthesizer.
+Process each domain ONE AT A TIME (sequential). For each domain, YOU (the skill orchestrator, Opus main agent) dispatch Opus collectors and synthesize their findings incrementally into the vault file yourself. No separate synthesizer subagent -- you ARE the synthesizer.
 
 **Why you do both dispatching AND synthesis**: Subagents do NOT reliably receive the Agent tool at runtime (confirmed Claude Code platform limitation). You (the main agent running this skill) are the only agent guaranteed to have it. And since you're already Opus, there's no quality loss from synthesizing inline vs dispatching a separate Opus synthesizer.
 
@@ -266,7 +266,7 @@ FOR i = 1 to N:
    Agent({
      description: "Collect <task type> for <domain name>",
      subagent_type: "deep-research:data-collector",
-     model: "sonnet",
+     model: "opus",
      prompt: "You are a DATA COLLECTOR for the deep-research plugin. Execute ONE narrow data-collection task and return structured raw findings.\n\nTASK: <specific collection job from step (b)>\nSOURCES TO CHECK: <explicit queries, URLs, library IDs, or paths>\nALREADY COVERED (do not re-fetch): <bullets from step (a), or 'nothing yet' if i=1>\nMAX OUTPUT: 2000 words\n\nReturn one H2 section per source with Date, Relevance, and Claims. End with a Collection Summary. Do NOT synthesize across sources. Do NOT write files. Flag any claim from model recall with [recall]."
    })
    ```

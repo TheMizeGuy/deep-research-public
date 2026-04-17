@@ -8,7 +8,7 @@
   "plugins": [
     {
       "name": "deep-research",
-      "description": "Multi-agent deep research plugin. Auto-scales from single Opus 4.6 researcher to 3-tier hierarchy with Opus managers and Sonnet collectors. Produces Obsidian vault docs with confidence-graded findings.",
+      "description": "Multi-agent deep research plugin. Auto-scales from single Opus 4.7 researcher to 3-tier hierarchy with Opus managers and Opus collectors. Produces Obsidian vault docs with confidence-graded findings.",
       "source": "./deep-research",
       "version": "0.1.0",
       "category": "research",

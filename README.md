@@ -2,9 +2,9 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-plugin-8A2BE2.svg)](https://claude.com/claude-code)
-[![Model](https://img.shields.io/badge/model-Opus%204.6-orange.svg)](https://www.anthropic.com/claude)
+[![Model](https://img.shields.io/badge/model-Opus%204.7-orange.svg)](https://www.anthropic.com/claude)
 
-A [Claude Code](https://claude.com/claude-code) plugin that conducts deep, multi-agent research on any topic and documents findings in an Obsidian vault. Auto-scales from a single Opus 4.6 researcher (narrow topics) to a full 3-tier hierarchy with Opus managers and Sonnet data collectors (broad topics).
+A [Claude Code](https://claude.com/claude-code) plugin that conducts deep, multi-agent research on any topic and documents findings in an Obsidian vault. Auto-scales from a single Opus 4.7 researcher (narrow topics) to a full 3-tier hierarchy with Opus managers and Opus data collectors (broad topics).
 
 ## How it works
 
@@ -25,13 +25,13 @@ The plugin runs fully autonomously:
 
 | Domains | Tier | Collector floor | Agents |
 |---|---|---|---|
-| 1 | 1 | 2 | 1 Opus + 2+ Sonnet |
-| 2 | 2 | 3 | 1 Opus + 3+ Sonnet per domain |
-| 3-4 | 3 | 4 | 1 Opus + 4+ Sonnet per domain |
-| 5-7 | 4 | 6 | Multiple Opus managers, each with 6+ Sonnet |
-| 8+ | 5 | 8 | Large-scale multi-manager, 8+ Sonnet each |
+| 1 | 1 | 2 | 1 Opus + 2+ Opus collectors |
+| 2 | 2 | 3 | 1 Opus + 3+ Opus collectors per domain |
+| 3-4 | 3 | 4 | 1 Opus + 4+ Opus collectors per domain |
+| 5-7 | 4 | 6 | Multiple Opus managers, each with 6+ Opus collectors |
+| 8+ | 5 | 8 | Large-scale multi-manager, 8+ Opus collectors each |
 
-Collector budget scales with scope: `max(floor, ceil(questions/4))`, capped at 10 per manager. Every tier uses the same Opus manager that MUST dispatch Sonnet collectors. There is no solo/direct-research path.
+Collector budget scales with scope: `max(floor, ceil(questions/4))`, capped at 10 per manager. Every tier uses the same Opus manager that MUST dispatch Opus collectors. There is no solo/direct-research path.
 
 ### Structural enforcement
 
@@ -81,8 +81,8 @@ Every file includes:
 | Type | Name | Purpose |
 |---|---|---|
 | Skill | `deep-research` | Entry point; parses args, runs recon, decomposes topic, dispatches managers, writes MOC |
-| Agent | `research-manager` | Tier 2/3 Opus manager; dispatches Sonnet collectors, synthesizes findings. No direct research tools |
-| Agent | `data-collector` | Sonnet collector; executes one narrow research task, returns structured raw findings |
+| Agent | `research-manager` | Tier 2/3 Opus manager; dispatches Opus collectors, synthesizes findings. No direct research tools |
+| Agent | `data-collector` | Opus 4.7 collector; executes one narrow research task, returns structured raw findings with high-quality relevance filtering |
 
 ## Optional enhancements
 
@@ -110,4 +110,4 @@ MIT. See [LICENSE](LICENSE).
 
 ## Credits
 
-Built by [mize](https://github.com/TheMizeGuy). Backed by the [Claude Code](https://claude.com/claude-code) plugin system and Anthropic's Opus 4.6 + Sonnet 4.6 models.
+Built by [mize](https://github.com/TheMizeGuy). Backed by the [Claude Code](https://claude.com/claude-code) plugin system and Anthropic's Opus 4.7 model.

@@ -1,7 +1,7 @@
 ---
 name: data-collector
 description: |-
-  Internal agent for the deep-research plugin. Do NOT dispatch directly — only dispatched by research-manager agents during deep research runs. Executes one narrow data-collection task (a set of web searches, a context7 lookup, a vault scan, or a GitHub issue search) and returns structured raw findings. Does not synthesize, editorialize, or write files. Sonnet 4.6 for cost-efficient bulk data acquisition.
+  Internal agent for the deep-research plugin. Do NOT dispatch directly — only dispatched by research-manager agents during deep research runs. Executes one narrow data-collection task (a set of web searches, a context7 lookup, a vault scan, or a GitHub issue search) and returns structured raw findings. Does not synthesize, editorialize, or write files. Opus 4.7 for maximum signal quality — relevance filtering, quote extraction, and noise rejection matter more than cost.
 
   Examples:
   <example>
@@ -13,7 +13,7 @@ description: |-
   </commentary>
   </example>
 tools: Read, Grep, Glob, Bash, WebSearch, WebFetch, mcp__plugin_context7_context7__resolve-library-id, mcp__plugin_context7_context7__query-docs, mcp__plugin_goodmem_goodmem__goodmem_memories_retrieve, mcp__plugin_goodmem_goodmem__goodmem_memories_get, mcp__plugin_serena_serena__search_for_pattern
-model: sonnet
+model: opus
 color: green
 ---
 
