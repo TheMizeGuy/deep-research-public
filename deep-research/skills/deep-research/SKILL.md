@@ -1,14 +1,18 @@
 ---
 name: deep-research
 description: |-
-  Conduct deep, multi-agent research on a topic and document findings in an Obsidian vault with optional goodmem ingestion. Auto-scales from single-agent (narrow topics) to full 3-tier hierarchy with Opus managers and Opus data collectors (broad topics). Use when the user asks to "deep research", "do comprehensive research on", "research everything about", "build a knowledge base on", or "create a reference on" a topic. Do NOT use for quick factual questions, single lookups, or casual "what is X" queries.
+  Conduct deep, multi-agent research on a topic and document findings in an Obsidian vault with optional goodmem ingestion. Auto-scales from single-agent (narrow topics) to a full 5-tier hierarchy of data collectors running on the session model (broad topics). Use when the user asks to "deep research", "do comprehensive research on", "research everything about", "build a knowledge base on", or "create a reference on" a topic. Do NOT use for quick factual questions, single lookups, or casual "what is X" queries.
 argument-hint: '<topic> [--path <vault-path>] [--tier <1-5>]'
-allowed-tools: Bash, Read, Write, Grep, Glob, Agent, TodoWrite, TaskCreate, TaskUpdate, WebSearch, WebFetch, mcp__plugin_goodmem_goodmem__goodmem_memories_retrieve, mcp__plugin_goodmem_goodmem__goodmem_memories_get, mcp__plugin_goodmem_goodmem__goodmem_memories_create
+allowed-tools: Bash, Read, Write, Grep, Glob, Agent, TodoWrite, TaskCreate, TaskUpdate, WebSearch, WebFetch, mcp__goodmem__goodmem_memories_retrieve, mcp__goodmem__goodmem_memories_get, mcp__goodmem__goodmem_memories_create
 ---
 
 # Deep Research
 
 You are conducting a deep research run on the user's behalf. Your job is to decompose the topic, dispatch research agents, and produce a permanent Obsidian vault reference. You run fully autonomously — no checkpoints, no pauses. Report results at the end.
+
+## Execution mode
+
+Data-collector agents inherit the session model — whichever Claude tier is currently active, always the strongest available. Never block on, or call out to, a specific named model; dispatch resolves to the session model automatically. If the session model is already the strongest tier and a given research task is important or complex enough that inline handling would outperform delegation, the orchestrator may fold that piece of work into the main thread instead of dispatching a collector for it — but the default remains the incremental per-collector dispatch loop in Step 4c, which exists to keep raw search volume out of the synthesis context, not merely to route work to a particular model.
 
 ## Step 1: Parse arguments
 
@@ -60,7 +64,7 @@ For each domain, produce:
 
 ### 3b: Auto-detect tier (unless --tier forced)
 
-Every tier dispatches an Opus manager with mandatory Opus collectors. No tier does solo research.
+Every tier runs a manager-role pass per domain (the orchestrator itself — see Step 4) with mandatory collectors running on the session model. No tier does solo research. Tiers scale aggressively — even a single domain gets collectors.
 
 | Domains | Tier | Collector floor | Behavior |
 |---|---|---|---|
@@ -126,60 +130,15 @@ TaskCreate: "Finalize MOC cross-cutting sections + cleanup"
 
 ### 3f: Initialize the MOC scaffold
 
-Before processing any domains, write the MOC skeleton at `<vault path>/00 - Index.md`. This becomes the index file that you update as each domain completes (step 4e) -- users and other agents can read it mid-run to see progress.
+Before processing any domains, write the MOC skeleton at `<vault path>/00 - Index.md`. Read `references/moc-template.md` (in this skill's directory) and copy its "Initial skeleton (step 3f)" block exactly, substituting the `<angle-bracket>` fields: frontmatter with `goodmem_ingest: true` and `status: in-progress`, a map table with one `_pending_` row per planned domain, placeholder sections for Key findings / Gaps / Cross-references (kept verbatim — step 5 targets those exact placeholder strings), and a Session provenance block.
 
-```markdown
----
-goodmem_ingest: true
-goodmem_scope: cross-project
-type: moc
-topic: <topic-keyword>
-date: <today YYYY-MM-DD>
-updated: <today YYYY-MM-DD>
-tags: [<topic>, moc]
-status: in-progress
----
-
-# <Topic>
-
-<1-2 sentence overview -- write this now from your understanding of the topic.>
-
-## Map of this vault section
-
-| # | Note | What's in it | Lines |
-|---|---|---|---|
-| 00 | [[00 - Index]] | You are here | this |
-| 01 | [[01 - <Domain 1 title>]] | _pending_ | _pending_ |
-| 02 | [[02 - <Domain 2 title>]] | _pending_ | _pending_ |
-| ... (one row per planned domain) | | _pending_ | _pending_ |
-
-## Key findings
-
-_Populated after all domains complete (step 5)._
-
-## Gaps and open questions
-
-_Populated after all domains complete (step 5)._
-
-## Cross-references
-
-_Populated after all domains complete (step 5)._
-
-## Session provenance
-
-- Date: <today>
-- Tier: <1-5>
-- Domains: <N>
-- Status: in-progress
-```
-
-Rationale: interrupt resilience (a partial MOC is more useful than none) and visible progress in Obsidian as rows flip from `_pending_` to filled.
+This becomes the index file updated as each domain completes (step 4e) — users and other agents can read it mid-run to see progress. Rationale: interrupt resilience (a partial MOC is more useful than none) and visible progress in Obsidian as rows flip from `_pending_` to filled.
 
 ## Step 4: For each domain -- collect and synthesize
 
-Process each domain ONE AT A TIME (sequential). For each domain, YOU (the skill orchestrator, Opus main agent) dispatch Opus collectors and synthesize their findings incrementally into the vault file yourself. No separate synthesizer subagent -- you ARE the synthesizer.
+Process each domain ONE AT A TIME (sequential). For each domain, YOU (the skill orchestrator, running on the session model) dispatch collectors — which inherit that same session model — and synthesize their findings incrementally into the vault file yourself. No separate synthesizer subagent — you ARE the synthesizer.
 
-**Why you do both dispatching AND synthesis**: Subagents do NOT reliably receive the Agent tool at runtime (confirmed Claude Code platform limitation). You (the main agent running this skill) are the only agent guaranteed to have it. And since you're already Opus, there's no quality loss from synthesizing inline vs dispatching a separate Opus synthesizer.
+**Why you do both dispatching AND synthesis**: Subagents do NOT reliably receive the Agent tool at runtime (confirmed Claude Code platform limitation). You (the main agent running this skill) are the only agent guaranteed to have it. And since you're already running on the session model — always the strongest available Claude — there's no quality loss from synthesizing inline vs dispatching a separate collector to do it.
 
 ### 4a: Plan ALL collector tasks upfront (commit before dispatching)
 
@@ -234,19 +193,7 @@ tags: [<topic>, <sub-topics>]
 
 ### 4c: Serial collector loop -- incremental synthesis (STRICTLY one dispatch per turn)
 
-**EXECUTION RULE -- overrides Claude Code's default parallel-tool-call bias for this step.**
-
-Your system prompt tells you "if you intend to call multiple tools and there are no dependencies between the calls, make all of the independent calls in the same function_calls block." **That rule does NOT apply here.** In this loop, each collector's briefing is DERIVED from the state of OUTPUT_PATH after the previous collector's synthesis -- so there IS a hard data dependency between dispatches, even though step 4a pre-committed the task list.
-
-Concrete consequences:
-- Emit **exactly ONE Agent tool call per assistant turn** during this loop. Never two.
-- Never put an Agent call in the same `function_calls` block as another Agent call.
-- Never dispatch collector `i+1` until collector `i`'s findings have been read, integrated into OUTPUT_PATH via Edit, and the integration verified by re-reading the file.
-- If you find yourself composing two Agent calls together, STOP. Delete one. Run them in separate turns.
-
-If you dispatch all N collectors without synthesis between them, you have violated this rule and the incremental-synthesis purpose of this skill is defeated: collector findings become a 12-20K-word context bomb at the end, later briefings cannot adapt to earlier gaps, and the output file is written in one rushed pass.
-
-You MUST dispatch every collector planned in Step 4a. Stopping early because findings seem "sufficient" is a failure. The whole point of N collectors is proportional coverage -- one collector cannot substitute for the full plan.
+**RULE ONE-PER-TURN (canonical anti-batching rule — stated in full only here; every other mention cites it by name):** emit exactly ONE Agent tool call per assistant turn during this loop, and do not dispatch collector `i+1` until collector `i`'s findings have been read, integrated into OUTPUT_PATH via Edit, and verified by re-reading the file. The system prompt's parallel-tool-call guidance ("make independent calls in the same block") does NOT apply here: each collector's briefing is DERIVED from the state of OUTPUT_PATH after the previous collector's synthesis, so there is a hard data dependency between dispatches even though step 4a pre-committed the task list. Batching defeats the skill's purpose — findings pile into a 12-20K-word context bomb at the end, later briefings cannot adapt to earlier gaps, and the output file is written in one rushed pass. If two Agent calls are ever composed in the same turn, delete one and run them in separate turns.
 
 **The loop -- N iterations, one collector per iteration:**
 
@@ -261,13 +208,13 @@ FOR i = 1 to N:
 
 (c) **Mark TaskCreate entry i as in_progress** via TaskUpdate. This and step (d) may be in the same turn.
 
-(d) **Dispatch collector i** -- this assistant turn must contain ONE Agent call and no other tool calls:
+(d) **Dispatch collector i** -- the turn's only tool call (RULE ONE-PER-TURN):
    ```
    Agent({
      description: "Collect <task type> for <domain name>",
      subagent_type: "deep-research:data-collector",
-     model: "opus",
-     prompt: "You are a DATA COLLECTOR for the deep-research plugin. Execute ONE narrow data-collection task and return structured raw findings.\n\nTASK: <specific collection job from step (b)>\nSOURCES TO CHECK: <explicit queries, URLs, library IDs, or paths>\nALREADY COVERED (do not re-fetch): <bullets from step (a), or 'nothing yet' if i=1>\nMAX OUTPUT: 2000 words\n\nReturn one H2 section per source with Date, Relevance, and Claims. End with a Collection Summary. Do NOT synthesize across sources. Do NOT write files. Flag any claim from model recall with [recall]."
+     // omit model — inherits the session model
+     prompt: "You are a DATA COLLECTOR for the deep-research plugin. Execute ONE narrow data-collection task and return structured raw findings.\n\nTASK: <specific collection job from step (b)>\nSOURCES TO CHECK: <explicit queries, URLs, library IDs, or paths>\nALREADY COVERED (do not re-fetch): <bullets from step (a), or 'nothing yet' if i=1>\nMAX OUTPUT: 2000 words\n\nMETHOD: work through SOURCES TO CHECK in order; prefer primary sources (official docs, engineering posts, papers, release notes) over secondary commentary; record each source's publication date; quote or closely paraphrase claims per source — never summarize across sources.\n\nACCEPTANCE CRITERIA -- verify each before returning, fix the output if any fails: (1) one H2 section per source with Date, Relevance (high/medium/low), and Claims bullets; (2) every claim from model recall rather than a tool result in this run flagged [recall]; (3) no cross-source synthesis, no conclusions, no files written; (4) Collection Summary present with source/claim counts and recency concerns; (5) total under MAX OUTPUT."
    })
    ```
    Also announce the dispatch in your assistant text so the user can see the count: `Dispatching collector <i>/N for domain "<domain>": <task type> -- <task description>`.
@@ -277,7 +224,15 @@ FOR i = 1 to N:
    - Apply confidence grading to each claim: [P] primary, [S] secondary, [P x N] cross-verified, [V] tool-verified, [recall] unverified
    - Deduplicate against the OUTPUT_PATH content you already hold from step (a)
    - Edit OUTPUT_PATH to append the graded findings to the appropriate sections (use Edit for targeted inserts; Write only if the file needs a full rewrite)
-   - Do NOT dispatch another collector in this turn. Integration is the only tool work in this turn.
+   - Integration is the only tool work in this turn -- no Agent call (RULE ONE-PER-TURN)
+
+   **Worked example -- one collector claim, graded and integrated.** Collector returned:
+   > - Claim: raising HNSW efSearch above 512 yields under 1% recall gain at 1M vectors (source: qdrant.tech benchmark page, dated 2025-11-02)
+
+   Landed in OUTPUT_PATH as:
+   > | efSearch beyond 512 buys <1% recall at 1M vectors | [P] qdrant.tech benchmarks, 2025-11-02 |
+
+   Grading decision: a vendor-run benchmark on the project's official domain is a primary source, so [P]. A second independent primary source confirming the same figure upgrades it to [P x 2]; re-running the measurement yourself upgrades it to [V]. A claim the collector flagged [recall] KEEPS that grade in the file until a tool call verifies it — never silently upgrade a [recall] claim during integration.
 
 (f) **Verify the write.** Read OUTPUT_PATH again and confirm the new section landed correctly. Note any fresh gaps this collector surfaced -- they feed step (b) of iteration i+1.
 
@@ -287,16 +242,14 @@ FOR i = 1 to N:
 
 END FOR
 
-**Anti-batching checklist -- if ANY of these is true, you violated the execution rule and must correct course:**
+**Mid-loop checklist -- if ANY of these is true, correct course before continuing:**
 
 | Symptom | Fix |
 |---|---|
-| Two or more Agent tool calls in one assistant turn | Split -- one per turn |
-| Dispatched collector i+1 without an Edit on OUTPUT_PATH since collector i returned | Stop. Integrate collector i first, then resume |
+| RULE ONE-PER-TURN violated: two Agent calls in one turn, collector i+1 dispatched before collector i was integrated, or OUTPUT_PATH written only once at the end instead of scaffold + once per collector | Stop. Integrate the outstanding collector into OUTPUT_PATH, verify with a Read, then resume one dispatch per turn |
 | Skipped the Read at step (a) | Read OUTPUT_PATH now; without it, the next briefing is uninformed |
 | Reused step 4a's briefing verbatim without reflecting what's already in the file | Re-read the file, recompute gaps, adjust the briefing |
 | Marked multiple TaskCreate entries completed in one turn | Each completion must be tied to the just-finished collector, not batched |
-| OUTPUT_PATH was only written once (at the end) rather than N+1 times (scaffold + once per collector) | You batched. Restart the loop with integration between dispatches |
 
 **Absolute prohibitions**:
 - Do NOT stop after collector 1 because "the findings look sufficient" -- run all N

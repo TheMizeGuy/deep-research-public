@@ -3,14 +3,14 @@
   "name": "deep-research-public",
   "description": "Marketplace for the deep-research plugin: multi-agent deep research for Claude Code.",
   "owner": {
-    "name": "mize"
+    "name": "TheMizeGuy"
   },
   "plugins": [
     {
       "name": "deep-research",
-      "description": "Multi-agent deep research plugin. Auto-scales from single Opus 4.7 researcher to 3-tier hierarchy with Opus managers and Opus collectors. Produces Obsidian vault docs with confidence-graded findings.",
+      "description": "Multi-agent deep research plugin. Auto-scales from a single-agent pass to a 5-tier hierarchy of data collectors running on the session model. Produces Obsidian vault docs with confidence-graded findings.",
       "source": "./deep-research",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "research",
       "homepage": "https://github.com/TheMizeGuy/deep-research-public"
     }

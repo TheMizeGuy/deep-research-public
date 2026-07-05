@@ -1,9 +1,10 @@
 {
   "name": "deep-research",
-  "version": "0.1.0",
-  "description": "Multi-agent deep research plugin. Auto-scales from single-agent to a 3-tier hierarchy with Opus 4.7 managers and Opus 4.7 data collectors based on topic complexity. Conducts reconnaissance via goodmem, decomposes topics into non-overlapping domains, dispatches research agents sequentially, synthesizes findings with confidence grading, and documents results in the Obsidian vault with goodmem ingestion. Supports slash command (/deep-research) and natural language triggers.",
+  "version": "0.1.1",
+  "description": "Multi-agent deep research plugin. Auto-scales from single-agent to a 5-tier hierarchy of data collectors running on the session model — always the strongest available Claude — based on topic complexity. Conducts reconnaissance via goodmem, decomposes topics into non-overlapping domains, dispatches research agents sequentially, synthesizes findings with confidence grading, and documents results in the Obsidian vault with optional goodmem ingestion. Supports slash command (/deep-research) and natural language triggers.",
   "author": {
-    "name": "mize"
+    "name": "TheMizeGuy",
+    "email": "ben@meipath.com"
   },
   "keywords": [
     "research",
