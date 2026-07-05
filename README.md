@@ -54,7 +54,7 @@ The archived manager design deliberately withholds WebSearch, WebFetch, and cont
 claude plugin marketplace add https://github.com/TheMizeGuy/deep-research-public.git
 
 # 2. Install the plugin
-claude plugin install deep-research@deep-research
+claude plugin install deep-research@deep-research-public
 
 # 3. Restart Claude Code for the plugin to load
 ```
