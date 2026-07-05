@@ -288,11 +288,7 @@ Immediately after step 4d (before starting the next domain), update the MOC and 
 
 2. **Bump the MOC's `updated:` frontmatter field** to today's date.
 
-3. **If GoodMem ingestion is configured**, force-sync this domain's vault file into goodmem so it's queryable immediately rather than waiting for the scheduled ingest job:
-   ```bash
-   ~/.local/bin/vault-ingest-goodmem.sh
-   ```
-   The ingester is idempotent (UUID5 from content hash) -- re-ingesting prior domains on every call is cheap and safe. If GoodMem is not configured, skip this step.
+3. **If your environment has a scheduled GoodMem vault-ingest job**, invoke it now to sync this domain's vault file immediately rather than waiting for the next scheduled run (e.g. a cron/launchd-triggered ingest script, if one is configured). Skip this step entirely if no such job exists -- the memory written in step 4d.6 already makes the domain queryable, and a scheduled job (if any) will pick up the vault file on its own cadence.
 
 4. **Mark the domain's TaskCreate entry as completed.**
 
@@ -377,5 +373,5 @@ Mark the final "Finalize MOC cross-cutting sections + cleanup" TaskCreate entry 
 | A collector fails to return | Log the failure, skip that slot, note the gap in the domain file and in step 4e's map-row summary |
 | A domain's output file missing after 4d | Log warning, note as gap in the MOC, continue with next domain |
 | Vault path permission error | Tell user and stop |
-| vault-ingest-goodmem.sh fails (step 4e) | Warn user that auto-ingest will pick it up on its next scheduled run; continue to next domain |
+| Scheduled vault-ingest job fails (step 4e) | Warn user that auto-ingest will pick it up on its next scheduled run (if one is configured); continue to next domain |
 | All domains fail | Tell user the research failed and suggest retrying with --tier 1 |
