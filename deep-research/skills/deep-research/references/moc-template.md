@@ -1,11 +1,11 @@
 # MOC template — deep-research skill
 
-Referenced from SKILL.md step 3f. Copy the skeleton below exactly, substituting the
+Referenced from SKILL.md step 3e. Copy the skeleton below exactly, substituting the
 `<angle-bracket>` fields. Keep the three `_Populated after all domains complete (step 5)._`
 placeholders verbatim — step 5 targets those exact strings with Edit. Step 4e replaces the
 `_pending_` map-table cells per domain as each domain completes.
 
-## Initial skeleton (step 3f)
+## Initial skeleton (step 3e)
 
 ```markdown
 ---

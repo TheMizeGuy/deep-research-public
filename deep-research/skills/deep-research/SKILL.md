@@ -1,9 +1,9 @@
 ---
 name: deep-research
 description: |-
-  Conduct deep, multi-agent research on a topic and document findings in an Obsidian vault with optional goodmem ingestion. Auto-scales from single-agent (narrow topics) to a full 5-tier hierarchy of data collectors running on the session model (broad topics). Use when the user asks to "deep research", "do comprehensive research on", "research everything about", "build a knowledge base on", or "create a reference on" a topic. Do NOT use for quick factual questions, single lookups, or casual "what is X" queries.
+  Conduct deep, multi-agent research on a topic and document findings in an Obsidian vault with optional goodmem ingestion. Auto-scales across five tiers of collector fan-out running on the session model, from a two-collector single-domain pass (narrow topics) to large multi-domain runs (broad topics). Use when the user asks to "deep research", "do comprehensive research on", "research everything about", "build a knowledge base on", or "create a reference on" a topic. Do NOT use for quick factual questions, single lookups, or casual "what is X" queries.
 argument-hint: '<topic> [--path <vault-path>] [--tier <1-5>]'
-allowed-tools: Bash, Read, Write, Grep, Glob, Agent, TodoWrite, TaskCreate, TaskUpdate, WebSearch, WebFetch, mcp__goodmem__goodmem_memories_retrieve, mcp__goodmem__goodmem_memories_get, mcp__goodmem__goodmem_memories_create
+allowed-tools: Bash, Read, Write, Edit, Grep, Glob, Agent, TaskCreate, TaskUpdate, TaskList, WebSearch, WebFetch, mcp__goodmem__goodmem_memories_retrieve, mcp__goodmem__goodmem_memories_get, mcp__goodmem__goodmem_memories_create
 ---
 
 # Deep Research
@@ -68,11 +68,11 @@ Every tier runs a manager-role pass per domain (the orchestrator itself — see 
 
 | Domains | Tier | Collector floor | Behavior |
 |---|---|---|---|
-| 1 | 1 | 2 | Single manager |
-| 2 | 2 | 3 | Single manager per domain |
-| 3-4 | 3 | 4 | Single manager per domain |
-| 5-7 | 4 | 6 | Multiple managers, intermediate synthesis files |
-| 8+ | 5 | 8 | Large-scale multi-manager, intermediate synthesis, extensive cross-referencing |
+| 1 | 1 | 2 | Single domain |
+| 2 | 2 | 3 | One manager-role pass per domain |
+| 3-4 | 3 | 4 | One manager-role pass per domain |
+| 5-7 | 4 | 6 | More domains, larger collector budgets |
+| 8+ | 5 | 8 | Large-scale multi-domain, extensive cross-referencing |
 
 ### 3b.1: Compute COLLECTOR BUDGET per domain
 
@@ -96,6 +96,10 @@ Examples:
 
 This ensures narrow domains don't waste collectors while broad domains get proportional coverage. The budget is computed per domain, not globally — different domains may get different budgets.
 
+### 3b.2: Aggregate fan-out sign-off gate
+
+Sum `budget` across all planned domains. If the total exceeds 20 collectors, STOP before Step 4: print the projected total agent count and a rough token estimate, and get explicit user sign-off before proceeding.
+
 ### 3c: Auto-detect vault path (unless --path forced)
 
 ```
@@ -111,28 +115,20 @@ This ensures narrow domains don't waste collectors while broad domains get propo
 
 Sanitize the topic for use as a folder name: preserve spaces (Obsidian handles them fine), remove special characters except hyphens.
 
-### 3d: Create scratch directory (Tier 4+ only)
-
-```bash
-mkdir -p /tmp/deep-research-$(date +%s)
-```
-
-Store this path — managers will write intermediate files here.
-
-### 3e: Log the plan
+### 3d: Log the plan
 
 Use TaskCreate to log each domain as a task. This gives the user visibility into progress:
 
 ```
 TaskCreate: "Research domain: <domain name>" for each domain
-TaskCreate: "Finalize MOC cross-cutting sections + cleanup"
+TaskCreate: "Finalize MOC cross-cutting sections"
 ```
 
-### 3f: Initialize the MOC scaffold
+### 3e: Initialize the MOC scaffold
 
-Before processing any domains, write the MOC skeleton at `<vault path>/00 - Index.md`. Read `references/moc-template.md` (in this skill's directory) and copy its "Initial skeleton (step 3f)" block exactly, substituting the `<angle-bracket>` fields: frontmatter with `goodmem_ingest: true` and `status: in-progress`, a map table with one `_pending_` row per planned domain, placeholder sections for Key findings / Gaps / Cross-references (kept verbatim — step 5 targets those exact placeholder strings), and a Session provenance block.
+Before processing any domains, write the MOC skeleton at `<vault path>/00 - Index.md`. Read `references/moc-template.md` (in this skill's directory) and copy its "Initial skeleton (step 3e)" block exactly, substituting the `<angle-bracket>` fields: frontmatter with `goodmem_ingest: true` and `status: in-progress`, a map table with one `_pending_` row per planned domain, placeholder sections for Key findings / Gaps / Cross-references (kept verbatim — step 5 targets those exact placeholder strings), and a Session provenance block.
 
-This becomes the index file updated as each domain completes (step 4e) — users and other agents can read it mid-run to see progress. Rationale: interrupt resilience (a partial MOC is more useful than none) and visible progress in Obsidian as rows flip from `_pending_` to filled.
+This becomes the index file updated as each domain completes (step 4e) — users and other agents can read it mid-run to see progress. Rationale: see "Why per-domain, not batched at end" under step 4e.
 
 ## Step 4: For each domain -- collect and synthesize
 
@@ -277,7 +273,7 @@ After verification:
 
 Immediately after step 4d (before starting the next domain), update the MOC and push this domain's vault file to goodmem:
 
-1. **Update the MOC map row for this domain.** Use Edit on `<vault path>/00 - Index.md` to replace the `_pending_` row you scaffolded in step 3f. Change:
+1. **Update the MOC map row for this domain.** Use Edit on `<vault path>/00 - Index.md` to replace the `_pending_` row you scaffolded in step 3e. Change:
    ```
    | NN | [[NN - <Title>]] | _pending_ | _pending_ |
    ```
@@ -333,15 +329,7 @@ Edit `<vault path>/00 - Index.md` to replace the three `_Populated after all dom
    - Total output lines: <sum of all domain files + MOC>
    ```
 
-## Step 6: Cleanup + report
-
-### Clean up scratch dir (Tier 4+ only)
-
-```bash
-rm -rf /tmp/deep-research-<timestamp>
-```
-
-### Report to user
+## Step 6: Final report
 
 Print a final summary:
 
@@ -362,7 +350,7 @@ Key findings:
 
 Do NOT add a trailing summary or explanation beyond this block.
 
-Mark the final "Finalize MOC cross-cutting sections + cleanup" TaskCreate entry as completed.
+Mark the final "Finalize MOC cross-cutting sections" TaskCreate entry as completed.
 
 ## Error handling
 

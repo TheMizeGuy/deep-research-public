@@ -8,9 +8,9 @@
   "plugins": [
     {
       "name": "deep-research",
-      "description": "Multi-agent deep research plugin. Auto-scales from a single-agent pass to a 5-tier hierarchy of data collectors running on the session model. Produces Obsidian vault docs with confidence-graded findings.",
+      "description": "Multi-agent deep research plugin. Auto-scales across five tiers of collector fan-out running on the session model, from a two-collector single-domain pass to large multi-domain runs. Produces Obsidian vault docs with confidence-graded findings.",
       "source": "./deep-research",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "research",
       "homepage": "https://github.com/TheMizeGuy/deep-research-public"
     }

@@ -5,6 +5,36 @@ All notable changes to the `deep-research` plugin will be documented in this fil
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.2] - 2026-07-06
+
+### Fixed
+
+- `SKILL.md` frontmatter `allowed-tools` now includes `Edit` and `TaskList` — steps 4c/4e/5
+  edit the output file and the pre-finalization gates check the task list, but neither tool
+  was in the allowlist. Dropped the unused `TodoWrite` (the body only uses
+  TaskCreate/TaskUpdate/TaskList).
+- Restored the aggregate fan-out sign-off gate as Step 3b.2. The README and Troubleshooting
+  sections documented a >20-collector sign-off stop, but the step itself was missing from
+  `SKILL.md`.
+- Removed the dead scratch-directory feature: step 3d created `/tmp/deep-research-<ts>` for
+  "managers" that no longer exist, step 6 deleted it, and nothing ever wrote to it. Steps
+  renumbered (3e→3d, 3f→3e; cross-references updated in `moc-template.md`); tier-table rows
+  no longer promise "intermediate synthesis files" or "multiple managers".
+- `agents/data-collector.md` recency flags no longer hardcode a model cutoff date
+  ("pre-May-2025") — reworded to the model-agnostic "model recall — not fetched this run".
+
+### Changed
+
+- `plugin.json` and `marketplace.json`: descriptions no longer call the two-layer
+  architecture a "5-tier hierarchy" and no longer claim a solo "single-agent pass" — tier 1
+  floors at two collectors; the accurate phrasing is five tiers of collector fan-out.
+  `plugin.json` gained `homepage`, `repository`, and `license` fields.
+- Tier-table Behavior wording harmonized across `SKILL.md` and `README.md`.
+
+### Added
+
+- `README.md`: "When to use it (and when not)" section.
+
 ## [0.1.1] - 2026-07-05
 
 ### Changed
@@ -47,5 +77,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   non-trivial claim in the output.
 - MIT license.
 
+[0.1.2]: https://github.com/TheMizeGuy/deep-research-public/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/TheMizeGuy/deep-research-public/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/TheMizeGuy/deep-research-public/releases/tag/v0.1.0

@@ -3,7 +3,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-plugin-8A2BE2.svg)](https://claude.com/claude-code)
 
-A [Claude Code](https://claude.com/claude-code) plugin that conducts deep, multi-agent research on any topic and documents findings in an Obsidian vault. Auto-scales from a single-agent pass (narrow topics) to a full 5-tier hierarchy of data collectors (broad topics), all running on the session model — whichever Claude tier is currently active, always the strongest available. The plugin never pins a model, so it stays current as Claude models change.
+A [Claude Code](https://claude.com/claude-code) plugin that conducts deep, multi-agent research on any topic and documents findings in an Obsidian vault. Auto-scales across five tiers of collector fan-out, from a two-collector single-domain pass (narrow topics) to large multi-domain runs (broad topics). Everything runs on the session model — whichever Claude tier is currently active, always the strongest available; the plugin never pins a model, so it stays current as Claude models change.
 
 ## How it works
 
@@ -29,7 +29,7 @@ Every tier runs a manager-role pass per domain (the orchestrator itself absorbs 
 | 1 | 1 | 2 | Single domain |
 | 2 | 2 | 3 | One manager-role pass per domain |
 | 3-4 | 3 | 4 | One manager-role pass per domain |
-| 5-7 | 4 | 6 | More domains, intermediate synthesis files |
+| 5-7 | 4 | 6 | More domains, larger collector budgets |
 | 8+ | 5 | 8 | Large-scale multi-domain, extensive cross-referencing |
 
 Collector budget scales with scope: `max(floor, ceil(questions/4))`, capped at 10 per domain. If the projected total across all domains exceeds 20 collectors, the skill stops and asks for explicit sign-off before dispatching.
@@ -67,6 +67,21 @@ After restart, verify with `claude plugin list`.
 2. Run `/deep-research <topic>` — or just ask in natural language ("deep research on X", "build a knowledge base on X").
 3. The skill searches for prior art, decomposes the topic into domains, auto-picks a tier, and starts dispatching data collectors one at a time. Expect one assistant turn per collector dispatch and one per integration — a Tier 1 topic (2+ collectors) finishes in a handful of turns; Tier 4-5 topics with several domains take longer.
 4. When it finishes, it prints a summary (topic, vault path, file count, tier, collector count, key findings) and the vault contains a `00 - Index.md` MOC plus one file per domain.
+
+## When to use it (and when not)
+
+Use it when the output should outlive the conversation:
+
+- Building a lasting reference on a technology, library, or domain before working in it
+- Multi-source questions where claims need confidence grading and source dates
+- Technology evaluations that deserve a paper trail — what was compared, on what evidence
+- Growing an Obsidian knowledge base topic by topic
+
+Skip it when:
+
+- A single factual lookup or one documentation page answers the question — a plain search is faster and cheaper
+- The answer is needed right now; a run dispatches 2-20+ collectors across many turns
+- The goal is changing code rather than understanding a domain — research output is prose, not patches
 
 ## Usage
 

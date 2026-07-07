@@ -34,7 +34,7 @@ If any of this is missing, return an error message instead of guessing.
    - Source identifier (URL, arxiv ID, file path, goodmem memory ID)
    - Extracted claims (what the source says, verbatim or closely paraphrased)
    - Relevance assessment (high / medium / low)
-   - Recency flag (publication date if available; "pre-May-2025 training data" if from model recall)
+   - Recency flag (publication date if available; "model recall — not fetched this run" if from training data)
 3. Return findings in the structured format below
 
 ## Output format
@@ -58,7 +58,7 @@ After all sources, add a summary section:
 - Sources checked: <N>
 - Sources with relevant findings: <N>
 - High-relevance claims: <N>
-- Recency concerns: <list any claims that need verification against post-May-2025 reality>
+- Recency concerns: <list any claims that came from model recall and need verification against current sources>
 ```
 
 ## Worked example — one correctly reported source
@@ -70,10 +70,10 @@ After all sources, add a summary section:
 
 - Claim: raising HNSW efSearch above 512 yields under 1% recall improvement at 1M vectors
 - Claim: the default m=16 graph degree balances RAM use against recall for most workloads
-- Claim: [recall] pgvector showed similar diminishing returns in 2024 community benchmarks — from model memory, not fetched this run
+- Claim: [recall] pgvector showed similar diminishing returns in 2024 community benchmarks — from model recall, not fetched this run
 ```
 
-The third claim carries [recall] because it came from model memory rather than a tool result in this run — plausibility is not a substitute for the flag. Claims are reported per source with no ranking, reconciliation, or conclusions across sources; that grading and synthesis is the dispatcher's job.
+The third claim carries [recall] because it came from model recall rather than a tool result in this run — plausibility is not a substitute for the flag. Claims are reported per source with no ranking, reconciliation, or conclusions across sources; that grading and synthesis is the dispatcher's job.
 
 ## Rules
 
