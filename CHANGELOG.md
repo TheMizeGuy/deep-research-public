@@ -5,6 +5,16 @@ All notable changes to the `deep-research` plugin will be documented in this fil
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.3] - 2026-07-14
+
+### Changed
+
+- Roster hygiene: moved `agents/research-manager.md` to
+  `skills/deep-research/references/research-manager-agent.md`. As a roster agent its full
+  CURRENTLY-UNREACHABLE description shipped into every session's agent-type listing for a role
+  no code path dispatches — pure context cost. Spec preserved verbatim minus agent frontmatter;
+  README references repointed. No behavior change (the agent was never dispatched by design).
+
 ## [0.1.2] - 2026-07-06
 
 ### Fixed

@@ -1,6 +1,6 @@
 {
   "name": "deep-research",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Multi-agent deep research plugin. Auto-scales across five tiers of collector fan-out based on topic complexity, from a two-collector single-domain pass to large multi-domain runs. Conducts reconnaissance via GoodMem when configured, decomposes topics into non-overlapping domains, dispatches data-collector agents sequentially with incremental synthesis and confidence grading, and documents results in an Obsidian vault with optional goodmem ingestion. Supports slash command (/deep-research) and natural language triggers.",
   "author": {
     "name": "TheMizeGuy",

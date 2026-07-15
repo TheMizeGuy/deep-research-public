@@ -1,22 +1,9 @@
----
-name: research-manager
-description: |-
-  Internal agent for the deep-research plugin — CURRENTLY UNREACHABLE: the skill's orchestrator absorbed the manager role (SKILL.md Step 4) and no code path dispatches this agent; retained for a possible future parallel-manager reintroduction at tiers 4-5. Do NOT dispatch directly. If reintroduced, MUST dispatch data-collector agents to gather raw material, then synthesize findings incrementally. PROHIBITED from using WebSearch/WebFetch/context7 directly — all research goes through collectors. Runs on the session model (always the strongest available Claude).
+# research-manager — preserved agent spec (unreachable by design)
 
-  Examples:
-  <example>
-  Context: A future parallel-manager reintroduction dispatches a manager for the "context engineering" domain.
-  user: "Research context engineering for LLM agents: briefings, output contracts, caching, compaction"
-  assistant: "I'll dispatch data collectors for web sources, docs, and existing vault content, then synthesize."
-  <commentary>
-  This agent is not dispatched by the live code path today — the orchestrator (SKILL.md Step 4) does this work directly.
-  </commentary>
-  </example>
-tools: Read, Grep, Glob, Bash, Write, Agent, mcp__goodmem__goodmem_memories_retrieve, mcp__goodmem__goodmem_memories_get, mcp__goodmem__goodmem_memories_create, mcp__plugin_serena_serena__list_dir, mcp__plugin_serena_serena__search_for_pattern
-color: blue
----
-
-## DO NOT DISPATCH — unreachable by design
+> Moved out of `agents/` 2026-07-14 (env-audit M4): as a roster agent its full
+> CURRENTLY-UNREACHABLE description shipped into every session's agent-type listing for a
+> role no code path dispatches. Restore by re-adding agent frontmatter and moving back to
+> `agents/` if parallel per-domain managers return at tiers 4-5. Design doc: research-manager-design.md.
 
 No live code path dispatches this agent: the deep-research orchestrator absorbed the
 manager role (`skills/deep-research/SKILL.md` Step 4 plans collector budgets, dispatches

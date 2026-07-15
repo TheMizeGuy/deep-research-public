@@ -41,7 +41,7 @@ skills/deep-research/SKILL.md (orchestrator + per-domain manager/synthesizer + d
   -> agents/data-collector.md (session model, narrow data acquisition, one dispatch per turn)
 ```
 
-The orchestrator (the SKILL.md body, running as the main agent) plans collector budgets, dispatches `data-collector` agents one at a time, and synthesizes their findings into the vault file itself — there is no separate synthesizer subagent. `agents/research-manager.md` is a retained stub: no live code path dispatches it today, but its full role spec is archived at `skills/deep-research/references/research-manager-design.md` in case a future release reintroduces parallel per-domain managers at tiers 4-5.
+The orchestrator (the SKILL.md body, running as the main agent) plans collector budgets, dispatches `data-collector` agents one at a time, and synthesizes their findings into the vault file itself — there is no separate synthesizer subagent. The manager role's spec is preserved at `skills/deep-research/references/research-manager-agent.md` (with its design rationale in `research-manager-design.md`) in case a future release reintroduces parallel per-domain managers at tiers 4-5 — it is not in the agent roster today.
 
 ### Structural enforcement
 
@@ -127,7 +127,6 @@ Every file includes:
 |---|---|---|
 | Skill | `deep-research` | Entry point and orchestrator; parses args, runs recon, decomposes the topic, computes tier/collector budgets, dispatches collectors, synthesizes findings, writes the MOC |
 | Agent | `data-collector` | Runs on the session model; executes one narrow research task per dispatch, returns structured raw findings with confidence-relevant relevance/date metadata, never synthesizes |
-| Agent | `research-manager` | Currently unreachable stub — the orchestrator absorbed this role; full spec archived at `skills/deep-research/references/research-manager-design.md` for a possible future parallel-manager reintroduction at tiers 4-5 |
 
 ## Optional enhancements
 
@@ -154,7 +153,7 @@ Every non-trivial claim in the output is tagged:
 | Symptom | Cause | Fix |
 |---|---|---|
 | Skill stops after one collector on a multi-collector domain | The model treated early findings as "sufficient" and skipped the rest of the plan | Not a config issue — re-run the request; the skill's instructions require dispatching every planned collector before finalizing a domain |
-| `research-manager` never seems to run | Expected — the agent is an unreachable stub | The orchestrator (SKILL.md) absorbed the manager role directly; this is by design, not a bug |
+| Only `data-collector` agents ever run | Expected | The orchestrator (SKILL.md) absorbed the manager role directly; the preserved manager spec lives in `skills/deep-research/references/` and is not in the agent roster |
 | No GoodMem/Context7/serena results | Those MCPs aren't configured in this Claude Code install | Optional — the skill degrades gracefully to vault-only output with plain WebSearch/WebFetch collectors |
 | Research stalls asking for sign-off | Projected collector total across domains exceeds 20 | Expected safety gate — confirm to proceed, or re-run with `--tier` set lower to shrink scope |
 | Vault path permission error | The target vault directory isn't writable | Pass an explicit writable `--path`, or fix directory permissions |

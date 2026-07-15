@@ -10,7 +10,7 @@
       "name": "deep-research",
       "description": "Multi-agent deep research plugin. Auto-scales across five tiers of collector fan-out running on the session model, from a two-collector single-domain pass to large multi-domain runs. Produces Obsidian vault docs with confidence-graded findings.",
       "source": "./deep-research",
-      "version": "0.1.2",
+      "version": "0.1.3",
       "category": "research",
       "homepage": "https://github.com/TheMizeGuy/deep-research-public"
     }
