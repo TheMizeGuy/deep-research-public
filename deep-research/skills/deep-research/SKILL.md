@@ -3,7 +3,7 @@ name: deep-research
 description: |-
   Conduct deep, multi-agent research on a topic and document findings in an Obsidian vault with optional goodmem ingestion. Auto-scales across five tiers of collector fan-out running on the session model, from a two-collector single-domain pass (narrow topics) to large multi-domain runs (broad topics). Use when the user asks to "deep research", "do comprehensive research on", "research everything about", "build a knowledge base on", or "create a reference on" a topic. Do NOT use for quick factual questions, single lookups, or casual "what is X" queries.
 argument-hint: '<topic> [--path <vault-path>] [--tier <1-5>]'
-allowed-tools: Bash, Read, Write, Edit, Grep, Glob, Agent, TaskCreate, TaskUpdate, TaskList, WebSearch, WebFetch, mcp__goodmem__goodmem_memories_retrieve, mcp__goodmem__goodmem_memories_get, mcp__goodmem__goodmem_memories_create
+allowed-tools: Bash, Read, Write, Edit, Grep, Glob, Agent, TaskCreate, TaskUpdate, TaskList, WebSearch, WebFetch, mcp__goodmem__goodmem_memories_retrieve, mcp__goodmem__goodmem_memories_get
 ---
 
 # Deep Research
@@ -266,7 +266,8 @@ After verification:
 3. Add `## References` section (consolidate all sources cited)
 4. Quality check: confidence grades on every claim, tables over prose, no AI slop
 5. Write the final version to OUTPUT PATH
-6. If GoodMem is configured, write ONE memory with key findings
+6. Do not create a second memory record directly. The output file already carries the configured
+   ingestion metadata; step 4e syncs that exact source, preserving one identity and lifecycle.
 7. Verify the output file: `wc -l <output path>` -- capture the line count for step 4e
 
 ### 4e: Update the MOC for this domain + force-sync to goodmem
@@ -284,7 +285,7 @@ Immediately after step 4d (before starting the next domain), update the MOC and 
 
 2. **Bump the MOC's `updated:` frontmatter field** to today's date.
 
-3. **If your environment has a scheduled GoodMem vault-ingest job**, invoke it now to sync this domain's vault file immediately rather than waiting for the next scheduled run (e.g. a cron/launchd-triggered ingest script, if one is configured). Skip this step entirely if no such job exists -- the memory written in step 4d.6 already makes the domain queryable, and a scheduled job (if any) will pick up the vault file on its own cadence.
+3. **If your environment has a scheduled GoodMem vault-ingest job**, invoke it now to sync this domain's vault file immediately rather than waiting for the next scheduled run (e.g. a cron/launchd-triggered ingest script, if one is configured). Skip this step entirely if no such job exists; a scheduled job may pick up the vault file on its own cadence.
 
 4. **Mark the domain's TaskCreate entry as completed.**
 

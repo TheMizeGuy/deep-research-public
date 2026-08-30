@@ -123,20 +123,11 @@ After the last collector returns and its findings are integrated:
 5. Write the final version to OUTPUT PATH
 6. If critical gaps remain, you may query goodmem or read vault files to fill them. For web research gaps, dispatch another collector — do NOT use WebSearch yourself.
 
-#### Step 5: Write domain findings to goodmem
+#### Step 5: Preserve one source identity
 
-After the output file is finalized, write your key findings directly to goodmem (if configured — the orchestrator will pass the space ID in the briefing). You own this domain — you know what's worth remembering better than the orchestrator will after parsing your output.
-
-Write ONE goodmem memory per domain covering the most important findings:
-
-```
-goodmem_memories_create({
-  space_id: "<learnings-space-id from briefing>",
-  content_type: "text/markdown",
-  original_content: "# <DOMAIN title>\n\n## Key findings\n<3-5 most important findings with confidence grades>\n\n## Gaps\n<unanswered questions>\n\n## Vault file\n<OUTPUT PATH>",
-  metadata: {"type": "reference", "topic": "<topic-keyword>", "date": "<YYYY-MM-DD>"}
-})
-```
+After the output file is finalized, do not create a separate memory record. The domain file's
+ingestion metadata and the orchestrator's sync step make that exact file the single source. A
+direct create would fork its identity and lifecycle.
 
 This runs BEFORE you return to the skill.
 
